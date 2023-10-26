@@ -10,6 +10,8 @@ const MAJOR_VERSION: u8 = 4;
 const MINOR_VERSION: u8 = 8;
 
 const VALUE_KIND_NIL: u8 = b'0';
+const VALUE_KIND_TRUE: u8 = b'T';
+const VALUE_KIND_FALSE: u8 = b'F';
 
 /// The library error type
 #[derive(Debug)]

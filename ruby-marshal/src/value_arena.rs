@@ -1,7 +1,9 @@
 mod value;
 mod value_handle;
 
+pub use self::value::FalseValue;
 pub use self::value::NilValue;
+pub use self::value::TrueValue;
 pub use self::value::Value;
 pub use self::value_handle::ValueHandle;
 use std::marker::PhantomData;
@@ -28,6 +30,12 @@ impl<T> TypedValueHandle<T> {
     }
 }
 
+impl<T> From<TypedValueHandle<T>> for ValueHandle {
+    fn from(handle: TypedValueHandle<T>) -> Self {
+        handle.into_raw()
+    }
+}
+
 /// An arena of Ruby values.
 #[derive(Debug)]
 pub struct ValueArena {
@@ -46,7 +54,7 @@ impl ValueArena {
         Self { arena, root }
     }
 
-    /// Get the root Value.
+    /// Get the root [`ValueHandle`].
     pub fn root(&self) -> ValueHandle {
         self.root
     }
@@ -70,9 +78,25 @@ impl ValueArena {
         self.arena.get(handle.into().index)
     }
 
-    /// Create an orphan [`Nil`] value and return the handle.
+    /// Create an orphan `Nil` value and return the handle.
     pub fn create_nil(&mut self) -> TypedValueHandle<NilValue> {
         let index = self.arena.insert(Value::Nil(NilValue));
+        let handle = ValueHandle::new(index);
+
+        TypedValueHandle::new_unchecked(handle)
+    }
+
+    /// Create an orphan `True` value and return the handle.
+    pub fn create_true(&mut self) -> TypedValueHandle<TrueValue> {
+        let index = self.arena.insert(Value::True(TrueValue));
+        let handle = ValueHandle::new(index);
+
+        TypedValueHandle::new_unchecked(handle)
+    }
+
+    /// Create an orphan `True` value and return the handle.
+    pub fn create_false(&mut self) -> TypedValueHandle<FalseValue> {
+        let index = self.arena.insert(Value::False(FalseValue));
         let handle = ValueHandle::new(index);
 
         TypedValueHandle::new_unchecked(handle)

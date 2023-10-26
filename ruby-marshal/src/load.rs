@@ -3,7 +3,9 @@ use crate::ValueArena;
 use crate::ValueHandle;
 use crate::MAJOR_VERSION;
 use crate::MINOR_VERSION;
+use crate::VALUE_KIND_FALSE;
 use crate::VALUE_KIND_NIL;
+use crate::VALUE_KIND_TRUE;
 use std::io::Read;
 
 #[derive(Debug)]
@@ -52,7 +54,9 @@ where
     fn read_value(&mut self) -> Result<ValueHandle, Error> {
         let kind = self.read_byte()?;
         match kind {
-            VALUE_KIND_NIL => Ok(self.arena.create_nil().into_raw()),
+            VALUE_KIND_NIL => Ok(self.arena.create_nil().into()),
+            VALUE_KIND_TRUE => Ok(self.arena.create_true().into()),
+            VALUE_KIND_FALSE => Ok(self.arena.create_false().into()),
             _ => Err(Error::InvalidValueKind { kind }),
         }
     }
@@ -63,7 +67,7 @@ where
         let root = self.read_value()?;
         let _old_root = self.arena.replace_root(root);
 
-        // TODO: Save and delete old root.
+        // TODO: Delete old root.
 
         Ok(self.arena)
     }
