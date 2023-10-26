@@ -2,6 +2,7 @@ mod value;
 mod value_handle;
 
 pub use self::value::FalseValue;
+pub use self::value::FixnumValue;
 pub use self::value::NilValue;
 pub use self::value::TrueValue;
 pub use self::value::Value;
@@ -97,6 +98,14 @@ impl ValueArena {
     /// Create an orphan `True` value and return the handle.
     pub fn create_false(&mut self) -> TypedValueHandle<FalseValue> {
         let index = self.arena.insert(Value::False(FalseValue));
+        let handle = ValueHandle::new(index);
+
+        TypedValueHandle::new_unchecked(handle)
+    }
+
+    /// Create an orphan `Fixnum` value and return the handle.
+    pub fn create_fixnum(&mut self, value: i32) -> TypedValueHandle<FixnumValue> {
+        let index = self.arena.insert(Value::Fixnum(FixnumValue::new(value)));
         let handle = ValueHandle::new(index);
 
         TypedValueHandle::new_unchecked(handle)

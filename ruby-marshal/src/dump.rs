@@ -5,6 +5,7 @@ use crate::ValueHandle;
 use crate::MAJOR_VERSION;
 use crate::MINOR_VERSION;
 use crate::VALUE_KIND_FALSE;
+use crate::VALUE_KIND_FIXNUM;
 use crate::VALUE_KIND_NIL;
 use crate::VALUE_KIND_TRUE;
 use std::io::Write;
@@ -38,6 +39,15 @@ where
         Ok(())
     }
 
+    fn write_fixnum(&mut self, value: i32) -> Result<(), Error> {
+        if value == 0 {
+            self.writer.write_all(&[0])?;
+            return Ok(());
+        }
+
+        todo!("write fixnum {value}");
+    }
+
     /// Write a value
     fn write_value(&mut self, handle: ValueHandle) -> Result<(), Error> {
         let value = self
@@ -54,6 +64,10 @@ where
             }
             Value::False(_) => {
                 self.write_byte(VALUE_KIND_FALSE)?;
+            }
+            Value::Fixnum(value) => {
+                self.write_byte(VALUE_KIND_FIXNUM)?;
+                self.write_fixnum(value.value())?;
             }
         }
 

@@ -1,9 +1,12 @@
 use crate::Error;
+use crate::FixnumValue;
+use crate::TypedValueHandle;
 use crate::ValueArena;
 use crate::ValueHandle;
 use crate::MAJOR_VERSION;
 use crate::MINOR_VERSION;
 use crate::VALUE_KIND_FALSE;
+use crate::VALUE_KIND_FIXNUM;
 use crate::VALUE_KIND_NIL;
 use crate::VALUE_KIND_TRUE;
 use std::io::Read;
@@ -50,6 +53,20 @@ where
         Ok(())
     }
 
+    fn read_fixnum_value(&mut self) -> Result<i32, Error> {
+        let len = self.read_byte()?;
+        if len == 0 {
+            return Ok(0);
+        }
+
+        todo!("{len}");
+    }
+
+    fn read_fixnum(&mut self) -> Result<TypedValueHandle<FixnumValue>, Error> {
+        let value = self.read_fixnum_value()?;
+        Ok(self.arena.create_fixnum(value))
+    }
+
     /// Read the next value
     fn read_value(&mut self) -> Result<ValueHandle, Error> {
         let kind = self.read_byte()?;
@@ -57,6 +74,7 @@ where
             VALUE_KIND_NIL => Ok(self.arena.create_nil().into()),
             VALUE_KIND_TRUE => Ok(self.arena.create_true().into()),
             VALUE_KIND_FALSE => Ok(self.arena.create_false().into()),
+            VALUE_KIND_FIXNUM => Ok(self.read_fixnum()?.into()),
             _ => Err(Error::InvalidValueKind { kind }),
         }
     }
