@@ -7,6 +7,7 @@ use crate::MINOR_VERSION;
 use crate::VALUE_KIND_FALSE;
 use crate::VALUE_KIND_FIXNUM;
 use crate::VALUE_KIND_NIL;
+use crate::VALUE_KIND_SYMBOL;
 use crate::VALUE_KIND_TRUE;
 use std::io::Write;
 
@@ -39,6 +40,20 @@ where
         Ok(())
     }
 
+    /// Write a byte string.
+    ///
+    /// This is a fixnum, followed by that many bytes.
+    fn write_byte_string(&mut self, value: &[u8]) -> Result<(), Error> {
+        let len =
+            i32::try_from(value.len()).map_err(|error| Error::USizeInvalidFixnum { error })?;
+
+        self.write_fixnum(len)?;
+        self.writer.write_all(value)?;
+
+        Ok(())
+    }
+
+    /// Write a Fixnum
     fn write_fixnum(&mut self, mut value: i32) -> Result<(), Error> {
         if value == 0 {
             self.writer.write_all(&[0])?;
@@ -98,6 +113,10 @@ where
             Value::Fixnum(value) => {
                 self.write_byte(VALUE_KIND_FIXNUM)?;
                 self.write_fixnum(value.value())?;
+            }
+            Value::Symbol(value) => {
+                self.write_byte(VALUE_KIND_SYMBOL)?;
+                self.write_byte_string(value.value())?;
             }
         }
 

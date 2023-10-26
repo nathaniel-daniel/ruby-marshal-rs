@@ -7,6 +7,7 @@ pub use self::load::load;
 pub use self::value_arena::FalseValue;
 pub use self::value_arena::FixnumValue;
 pub use self::value_arena::NilValue;
+pub use self::value_arena::SymbolValue;
 pub use self::value_arena::TrueValue;
 pub use self::value_arena::TypedValueHandle;
 pub use self::value_arena::Value;
@@ -20,6 +21,7 @@ const VALUE_KIND_NIL: u8 = b'0';
 const VALUE_KIND_TRUE: u8 = b'T';
 const VALUE_KIND_FALSE: u8 = b'F';
 const VALUE_KIND_FIXNUM: u8 = b'i';
+const VALUE_KIND_SYMBOL: u8 = b':';
 
 /// The library error type
 #[derive(Debug)]
@@ -34,7 +36,7 @@ pub enum Error {
     },
 
     /// An I/O Error
-    Io(std::io::Error),
+    Io { error: std::io::Error },
 
     /// An invalid value kind was encountered
     InvalidValueKind { kind: u8 },
@@ -47,16 +49,24 @@ pub enum Error {
 
     /// The fixnum size is too large
     InvalidFixnumSize { size: u8 },
+
+    /// The Fixnum is not a valid usize
+    FixnumInvalidUSize { error: std::num::TryFromIntError },
+
+    /// The usize is not a valid Fixnum
+    USizeInvalidFixnum { error: std::num::TryFromIntError },
 }
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::InvalidVersion { major, minor } => write!(f, "invalid version {major}.{minor}"),
-            Self::Io(_error) => write!(f, "I/O error"),
+            Self::Io { .. } => write!(f, "I/O error"),
             Self::InvalidValueKind { kind } => write!(f, "invalid value kind {kind}"),
             Self::InvalidValueHandle { .. } => write!(f, "invalid value handle"),
             Self::InvalidFixnumSize { size } => write!(f, "invalid fixnum size {size}"),
+            Self::FixnumInvalidUSize { .. } => write!(f, "fixnum is not a valid usize"),
+            Self::USizeInvalidFixnum { .. } => write!(f, "usize is not a valid Fixnum"),
         }
     }
 }
@@ -64,7 +74,9 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::Io(error) => Some(error),
+            Self::Io { error } => Some(error),
+            Self::FixnumInvalidUSize { error } => Some(error),
+            Self::USizeInvalidFixnum { error } => Some(error),
             _ => None,
         }
     }
@@ -72,7 +84,7 @@ impl std::error::Error for Error {
 
 impl From<std::io::Error> for Error {
     fn from(error: std::io::Error) -> Self {
-        Error::Io(error)
+        Error::Io { error }
     }
 }
 

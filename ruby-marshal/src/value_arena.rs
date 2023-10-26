@@ -4,6 +4,7 @@ mod value_handle;
 pub use self::value::FalseValue;
 pub use self::value::FixnumValue;
 pub use self::value::NilValue;
+pub use self::value::SymbolValue;
 pub use self::value::TrueValue;
 pub use self::value::Value;
 pub use self::value_handle::ValueHandle;
@@ -106,6 +107,14 @@ impl ValueArena {
     /// Create an orphan `Fixnum` value and return the handle.
     pub fn create_fixnum(&mut self, value: i32) -> TypedValueHandle<FixnumValue> {
         let index = self.arena.insert(Value::Fixnum(FixnumValue::new(value)));
+        let handle = ValueHandle::new(index);
+
+        TypedValueHandle::new_unchecked(handle)
+    }
+
+    /// Create an orphan `Symbol` value and return the handle.
+    pub fn create_symbol(&mut self, value: Vec<u8>) -> TypedValueHandle<SymbolValue> {
+        let index = self.arena.insert(Value::Symbol(SymbolValue::new(value)));
         let handle = ValueHandle::new(index);
 
         TypedValueHandle::new_unchecked(handle)

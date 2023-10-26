@@ -1,5 +1,6 @@
 use crate::Error;
 use crate::FixnumValue;
+use crate::SymbolValue;
 use crate::TypedValueHandle;
 use crate::ValueArena;
 use crate::ValueHandle;
@@ -8,6 +9,7 @@ use crate::MINOR_VERSION;
 use crate::VALUE_KIND_FALSE;
 use crate::VALUE_KIND_FIXNUM;
 use crate::VALUE_KIND_NIL;
+use crate::VALUE_KIND_SYMBOL;
 use crate::VALUE_KIND_TRUE;
 use std::io::Read;
 
@@ -38,6 +40,19 @@ where
         Ok(byte)
     }
 
+    /// Read a byte string.
+    ///
+    /// A byte string is a fixnum length, then that number of bytes.
+    fn read_byte_string(&mut self) -> Result<Vec<u8>, Error> {
+        let len = self.read_fixnum_value()?;
+        let len = usize::try_from(len).map_err(|error| Error::FixnumInvalidUSize { error })?;
+
+        let mut value = vec![0; len];
+        self.reader.read_exact(&mut value)?;
+
+        Ok(value)
+    }
+
     /// Read and validate the header.
     fn read_header(&mut self) -> Result<(), Error> {
         let major_version = self.read_byte()?;
@@ -53,6 +68,7 @@ where
         Ok(())
     }
 
+    /// Read a fixnum value
     fn read_fixnum_value(&mut self) -> Result<i32, Error> {
         let len = self.read_byte()?;
         if len == 0 {
@@ -97,12 +113,21 @@ where
         }
     }
 
+    /// Read a fixnum.
     fn read_fixnum(&mut self) -> Result<TypedValueHandle<FixnumValue>, Error> {
         let value = self.read_fixnum_value()?;
         Ok(self.arena.create_fixnum(value))
     }
 
-    /// Read the next value
+    /// Read a symbol.
+    fn read_symbol(&mut self) -> Result<TypedValueHandle<SymbolValue>, Error> {
+        let symbol = self.read_byte_string()?;
+        let handle = self.arena.create_symbol(symbol);
+
+        Ok(handle)
+    }
+
+    /// Read the next value.
     fn read_value(&mut self) -> Result<ValueHandle, Error> {
         let kind = self.read_byte()?;
         match kind {
@@ -110,6 +135,7 @@ where
             VALUE_KIND_TRUE => Ok(self.arena.create_true().into()),
             VALUE_KIND_FALSE => Ok(self.arena.create_false().into()),
             VALUE_KIND_FIXNUM => Ok(self.read_fixnum()?.into()),
+            VALUE_KIND_SYMBOL => Ok(self.read_symbol()?.into()),
             _ => Err(Error::InvalidValueKind { kind }),
         }
     }

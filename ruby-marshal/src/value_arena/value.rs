@@ -12,6 +12,9 @@ pub enum Value {
 
     /// A Fixnum
     Fixnum(FixnumValue),
+
+    /// A Symbol
+    Symbol(SymbolValue),
 }
 
 /// A Nil value.
@@ -41,5 +44,22 @@ impl FixnumValue {
     /// Get the inner value
     pub fn value(self) -> i32 {
         self.value
+    }
+}
+
+#[derive(Debug)]
+pub struct SymbolValue {
+    value: Vec<u8>,
+}
+
+impl SymbolValue {
+    /// Create a new [`SymbolValue`].
+    pub(super) fn new(value: Vec<u8>) -> Self {
+        Self { value }
+    }
+
+    /// Get the inner value.
+    pub fn value(&self) -> &[u8] {
+        &self.value
     }
 }
