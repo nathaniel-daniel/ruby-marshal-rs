@@ -4,6 +4,7 @@ use crate::ValueArena;
 use crate::ValueHandle;
 use crate::MAJOR_VERSION;
 use crate::MINOR_VERSION;
+use crate::VALUE_KIND_ARRAY;
 use crate::VALUE_KIND_FALSE;
 use crate::VALUE_KIND_FIXNUM;
 use crate::VALUE_KIND_NIL;
@@ -117,6 +118,16 @@ where
             Value::Symbol(value) => {
                 self.write_byte(VALUE_KIND_SYMBOL)?;
                 self.write_byte_string(value.value())?;
+            }
+            Value::Array(value) => {
+                let len = i32::try_from(value.len())
+                    .map_err(|error| Error::USizeInvalidFixnum { error })?;
+
+                self.write_byte(VALUE_KIND_ARRAY)?;
+                self.write_fixnum(len)?;
+                for value in value.value().iter() {
+                    self.write_value(*value)?;
+                }
             }
         }
 

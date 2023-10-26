@@ -1,3 +1,4 @@
+use crate::ArrayValue;
 use crate::Error;
 use crate::FixnumValue;
 use crate::SymbolValue;
@@ -6,10 +7,13 @@ use crate::ValueArena;
 use crate::ValueHandle;
 use crate::MAJOR_VERSION;
 use crate::MINOR_VERSION;
+use crate::VALUE_KIND_ARRAY;
 use crate::VALUE_KIND_FALSE;
 use crate::VALUE_KIND_FIXNUM;
 use crate::VALUE_KIND_NIL;
+use crate::VALUE_KIND_OBJECT_LINK;
 use crate::VALUE_KIND_SYMBOL;
+use crate::VALUE_KIND_SYMBOL_LINK;
 use crate::VALUE_KIND_TRUE;
 use std::io::Read;
 
@@ -127,6 +131,23 @@ where
         Ok(handle)
     }
 
+    /// Read an array
+    fn read_array(&mut self) -> Result<TypedValueHandle<ArrayValue>, Error> {
+        let handle = self.arena.create_nil().into_raw();
+
+        let len = self.read_fixnum_value()?;
+        let len = usize::try_from(len).map_err(|error| Error::FixnumInvalidUSize { error })?;
+        let mut value = Vec::with_capacity(len);
+
+        for _ in 0..len {
+            value.push(self.read_value()?);
+        }
+
+        *self.arena.get_mut(handle).unwrap() = ArrayValue::new(value).into();
+
+        Ok(TypedValueHandle::new_unchecked(handle))
+    }
+
     /// Read the next value.
     fn read_value(&mut self) -> Result<ValueHandle, Error> {
         let kind = self.read_byte()?;
@@ -136,6 +157,9 @@ where
             VALUE_KIND_FALSE => Ok(self.arena.create_false().into()),
             VALUE_KIND_FIXNUM => Ok(self.read_fixnum()?.into()),
             VALUE_KIND_SYMBOL => Ok(self.read_symbol()?.into()),
+            VALUE_KIND_SYMBOL_LINK => todo!("symbol link"),
+            VALUE_KIND_OBJECT_LINK => todo!("object link"),
+            VALUE_KIND_ARRAY => Ok(self.read_array()?.into()),
             _ => Err(Error::InvalidValueKind { kind }),
         }
     }

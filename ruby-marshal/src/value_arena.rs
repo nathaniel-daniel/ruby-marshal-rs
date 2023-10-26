@@ -1,6 +1,7 @@
 mod value;
 mod value_handle;
 
+pub use self::value::ArrayValue;
 pub use self::value::FalseValue;
 pub use self::value::FixnumValue;
 pub use self::value::NilValue;
@@ -19,7 +20,7 @@ pub struct TypedValueHandle<T> {
 
 impl<T> TypedValueHandle<T> {
     /// Create a new [`TypedValueHandle`] from a [`ValueHandle`] without type checking.
-    fn new_unchecked(handle: ValueHandle) -> Self {
+    pub(crate) fn new_unchecked(handle: ValueHandle) -> Self {
         Self {
             handle,
             _data: PhantomData,
@@ -80,6 +81,14 @@ impl ValueArena {
         self.arena.get(handle.into().index)
     }
 
+    /// Get a mutable reference to the [`Value`] denoted by the given [`ValueHandle`].
+    pub(crate) fn get_mut<H>(&mut self, handle: H) -> Option<&mut Value>
+    where
+        H: Into<ValueHandle>,
+    {
+        self.arena.get_mut(handle.into().index)
+    }
+
     /// Create an orphan `Nil` value and return the handle.
     pub fn create_nil(&mut self) -> TypedValueHandle<NilValue> {
         let index = self.arena.insert(Value::Nil(NilValue));
@@ -124,5 +133,13 @@ impl ValueArena {
 impl Default for ValueArena {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl std::ops::Index<ValueHandle> for ValueArena {
+    type Output = Value;
+
+    fn index(&self, index: ValueHandle) -> &Self::Output {
+        self.get(index).expect("missing value")
     }
 }

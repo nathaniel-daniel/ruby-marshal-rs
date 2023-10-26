@@ -4,6 +4,7 @@ mod value_arena;
 
 pub use self::dump::dump;
 pub use self::load::load;
+pub use self::value_arena::ArrayValue;
 pub use self::value_arena::FalseValue;
 pub use self::value_arena::FixnumValue;
 pub use self::value_arena::NilValue;
@@ -22,6 +23,9 @@ const VALUE_KIND_TRUE: u8 = b'T';
 const VALUE_KIND_FALSE: u8 = b'F';
 const VALUE_KIND_FIXNUM: u8 = b'i';
 const VALUE_KIND_SYMBOL: u8 = b':';
+const VALUE_KIND_SYMBOL_LINK: u8 = b';';
+const VALUE_KIND_OBJECT_LINK: u8 = b'@';
+const VALUE_KIND_ARRAY: u8 = b'[';
 
 /// The library error type
 #[derive(Debug)]

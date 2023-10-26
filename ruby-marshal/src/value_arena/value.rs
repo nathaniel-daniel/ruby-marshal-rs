@@ -1,3 +1,5 @@
+use crate::ValueHandle;
+
 /// A Ruby Value
 #[derive(Debug)]
 pub enum Value {
@@ -15,6 +17,45 @@ pub enum Value {
 
     /// A Symbol
     Symbol(SymbolValue),
+
+    /// An Array
+    Array(ArrayValue),
+}
+
+impl From<NilValue> for Value {
+    fn from(value: NilValue) -> Self {
+        Self::Nil(value)
+    }
+}
+
+impl From<TrueValue> for Value {
+    fn from(value: TrueValue) -> Self {
+        Self::True(value)
+    }
+}
+
+impl From<FalseValue> for Value {
+    fn from(value: FalseValue) -> Self {
+        Self::False(value)
+    }
+}
+
+impl From<FixnumValue> for Value {
+    fn from(value: FixnumValue) -> Self {
+        Self::Fixnum(value)
+    }
+}
+
+impl From<SymbolValue> for Value {
+    fn from(value: SymbolValue) -> Self {
+        Self::Symbol(value)
+    }
+}
+
+impl From<ArrayValue> for Value {
+    fn from(value: ArrayValue) -> Self {
+        Self::Array(value)
+    }
 }
 
 /// A Nil value.
@@ -47,6 +88,7 @@ impl FixnumValue {
     }
 }
 
+/// A Symbol
 #[derive(Debug)]
 pub struct SymbolValue {
     value: Vec<u8>,
@@ -61,5 +103,33 @@ impl SymbolValue {
     /// Get the inner value.
     pub fn value(&self) -> &[u8] {
         &self.value
+    }
+}
+
+/// An Array
+#[derive(Debug)]
+pub struct ArrayValue {
+    value: Vec<ValueHandle>,
+}
+
+impl ArrayValue {
+    /// Create a new [`Array`].
+    pub(crate) fn new(value: Vec<ValueHandle>) -> Self {
+        Self { value }
+    }
+
+    /// Get the inner value.
+    pub fn value(&self) -> &[ValueHandle] {
+        &self.value
+    }
+
+    /// Get the number of elements in the array
+    pub fn len(&self) -> usize {
+        self.value.len()
+    }
+
+    /// Check if this is empty
+    pub fn is_empty(&self) -> bool {
+        self.value.is_empty()
     }
 }
