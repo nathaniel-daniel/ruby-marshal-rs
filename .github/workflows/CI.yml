@@ -1,0 +1,68 @@
+name: Rust
+'on':
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-lint-cargo-${{ hashFiles('**/Cargo.lock') }}
+        
+      - name: Clippy
+        run: cargo clippy --tests -- -D warnings
+        
+      - name: Clippy [features=tokio]
+        run: cargo clippy --tests --features=tokio -- -D warnings
+          
+  deny:
+    name: Deny
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Deny
+        uses: EmbarkStudios/cargo-deny-action@v1
+        
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+        
+      - name: Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-build-cargo-${{ hashFiles('**/Cargo.lock') }}
+        
+      - name: Build
+        run: cargo build --verbose
+        
+      - name: Test
+        run: cargo test --all --verbose
