@@ -10,6 +10,7 @@ use crate::VALUE_KIND_ARRAY;
 use crate::VALUE_KIND_FALSE;
 use crate::VALUE_KIND_FIXNUM;
 use crate::VALUE_KIND_NIL;
+use crate::VALUE_KIND_OBJECT_LINK;
 use crate::VALUE_KIND_SYMBOL;
 use crate::VALUE_KIND_SYMBOL_LINK;
 use crate::VALUE_KIND_TRUE;
@@ -22,6 +23,7 @@ pub struct Dumper<'a, W> {
     arena: &'a ValueArena,
 
     symbol_links: IndexSet<TypedValueHandle<SymbolValue>>,
+    object_links: IndexSet<ValueHandle>,
 }
 
 impl<'a, W> Dumper<'a, W> {
@@ -31,6 +33,7 @@ impl<'a, W> Dumper<'a, W> {
             writer,
             arena,
             symbol_links: IndexSet::new(),
+            object_links: IndexSet::new(),
         }
     }
 }
@@ -104,6 +107,31 @@ where
         Ok(())
     }
 
+    /// Try to write a value object reference, if possible.
+    /// If not successful, this entry is recorded and will be used for future resolutions.
+    ///
+    /// # Returns
+    /// Returns true if successful.
+    fn try_write_value_object_link(&mut self, handle: ValueHandle) -> Result<bool, Error> {
+        let (index, inserted) = self.object_links.insert_full(handle);
+        if !inserted {
+            self.write_value_object_link(index)?;
+            return Ok(true);
+        }
+
+        Ok(false)
+    }
+
+    /// Write an object link, as a value.
+    fn write_value_object_link(&mut self, index: usize) -> Result<(), Error> {
+        let index = i32::try_from(index).map_err(|error| Error::USizeInvalidFixnum { error })?;
+
+        self.write_byte(VALUE_KIND_OBJECT_LINK)?;
+        self.write_fixnum(index)?;
+
+        Ok(())
+    }
+
     /// Write a value
     fn write_value(&mut self, handle: ValueHandle) -> Result<(), Error> {
         let value = self
@@ -145,6 +173,10 @@ where
                 }
             }
             Value::Array(value) => {
+                if self.try_write_value_object_link(handle)? {
+                    return Ok(());
+                }
+
                 let len = i32::try_from(value.len())
                     .map_err(|error| Error::USizeInvalidFixnum { error })?;
 

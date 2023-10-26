@@ -24,6 +24,7 @@ struct Loader<R> {
     arena: ValueArena,
 
     symbol_links: Vec<TypedValueHandle<SymbolValue>>,
+    object_links: Vec<ValueHandle>,
 }
 
 impl<R> Loader<R> {
@@ -35,6 +36,7 @@ impl<R> Loader<R> {
             reader,
             arena,
             symbol_links: Vec::new(),
+            object_links: Vec::new(),
         }
     }
 }
@@ -152,9 +154,23 @@ where
         Ok(*value)
     }
 
+    /// Read an object link
+    fn read_object_link(&mut self) -> Result<ValueHandle, Error> {
+        let index = self.read_fixnum_value()?;
+        let index = usize::try_from(index).map_err(|error| Error::FixnumInvalidUSize { error })?;
+
+        let value = self
+            .object_links
+            .get(index)
+            .ok_or(Error::MissingObjectLink { index })?;
+
+        Ok(*value)
+    }
+
     /// Read an array
     fn read_array(&mut self) -> Result<TypedValueHandle<ArrayValue>, Error> {
         let handle = self.arena.create_nil().into_raw();
+        self.object_links.push(handle);
 
         let len = self.read_fixnum_value()?;
         let len = usize::try_from(len).map_err(|error| Error::FixnumInvalidUSize { error })?;
@@ -179,7 +195,7 @@ where
             VALUE_KIND_FIXNUM => Ok(self.read_fixnum()?.into()),
             VALUE_KIND_SYMBOL => Ok(self.read_symbol()?.into()),
             VALUE_KIND_SYMBOL_LINK => Ok(self.read_symbol_link()?.into()),
-            VALUE_KIND_OBJECT_LINK => todo!("object link"),
+            VALUE_KIND_OBJECT_LINK => Ok(self.read_object_link()?),
             VALUE_KIND_ARRAY => Ok(self.read_array()?.into()),
             _ => Err(Error::InvalidValueKind { kind }),
         }

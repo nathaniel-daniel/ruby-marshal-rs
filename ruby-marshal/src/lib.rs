@@ -62,6 +62,9 @@ pub enum Error {
 
     /// Missing a symbol link
     MissingSymbolLink { index: usize },
+
+    /// Missing an object link
+    MissingObjectLink { index: usize },
 }
 
 impl std::fmt::Display for Error {
@@ -75,6 +78,7 @@ impl std::fmt::Display for Error {
             Self::FixnumInvalidUSize { .. } => write!(f, "fixnum is not a valid usize"),
             Self::USizeInvalidFixnum { .. } => write!(f, "usize is not a valid Fixnum"),
             Self::MissingSymbolLink { index } => write!(f, "missing symbol link {index}"),
+            Self::MissingObjectLink { index } => write!(f, "missing object link {index}"),
         }
     }
 }
