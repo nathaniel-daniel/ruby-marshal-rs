@@ -68,6 +68,10 @@ where
 
             todo!("load fixnum {len}")
         } else {
+            if (byte as i8) < -4 {
+                return Ok(i32::from(byte as i8) + 5);
+            }
+
             todo!("load negative fixnum")
         }
     }
