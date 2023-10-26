@@ -27,9 +27,6 @@ jobs:
         
       - name: Clippy
         run: cargo clippy --tests -- -D warnings
-        
-      - name: Clippy [features=tokio]
-        run: cargo clippy --tests --features=tokio -- -D warnings
           
   deny:
     name: Deny
