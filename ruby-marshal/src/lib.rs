@@ -59,6 +59,9 @@ pub enum Error {
 
     /// The usize is not a valid Fixnum
     USizeInvalidFixnum { error: std::num::TryFromIntError },
+
+    /// Missing a symbol link
+    MissingSymbolLink { index: usize },
 }
 
 impl std::fmt::Display for Error {
@@ -71,6 +74,7 @@ impl std::fmt::Display for Error {
             Self::InvalidFixnumSize { size } => write!(f, "invalid fixnum size {size}"),
             Self::FixnumInvalidUSize { .. } => write!(f, "fixnum is not a valid usize"),
             Self::USizeInvalidFixnum { .. } => write!(f, "usize is not a valid Fixnum"),
+            Self::MissingSymbolLink { index } => write!(f, "missing symbol link {index}"),
         }
     }
 }
@@ -107,7 +111,7 @@ mod test {
             let mut new_data = Vec::new();
             dump(&mut new_data, &value_arena).expect("failed to dump");
 
-            assert!(data == new_data);
+            assert!(data == new_data, "{data:?} != {new_data:?}");
         }
     }
 }

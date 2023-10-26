@@ -1,4 +1,6 @@
 use crate::Error;
+use crate::SymbolValue;
+use crate::TypedValueHandle;
 use crate::Value;
 use crate::ValueArena;
 use crate::ValueHandle;
@@ -9,19 +11,27 @@ use crate::VALUE_KIND_FALSE;
 use crate::VALUE_KIND_FIXNUM;
 use crate::VALUE_KIND_NIL;
 use crate::VALUE_KIND_SYMBOL;
+use crate::VALUE_KIND_SYMBOL_LINK;
 use crate::VALUE_KIND_TRUE;
+use indexmap::IndexSet;
 use std::io::Write;
 
 /// A dumper for ruby data
 pub struct Dumper<'a, W> {
     writer: W,
     arena: &'a ValueArena,
+
+    symbol_links: IndexSet<TypedValueHandle<SymbolValue>>,
 }
 
 impl<'a, W> Dumper<'a, W> {
     /// Create a new [`Dumper`] from a writer and entry arena.
     fn new(writer: W, arena: &'a ValueArena) -> Self {
-        Self { writer, arena }
+        Self {
+            writer,
+            arena,
+            symbol_links: IndexSet::new(),
+        }
     }
 }
 
@@ -116,8 +126,23 @@ where
                 self.write_fixnum(value.value())?;
             }
             Value::Symbol(value) => {
-                self.write_byte(VALUE_KIND_SYMBOL)?;
-                self.write_byte_string(value.value())?;
+                let handle = TypedValueHandle::new_unchecked(handle);
+
+                match self.symbol_links.get_index_of(&handle) {
+                    Some(index) => {
+                        let index = i32::try_from(index)
+                            .map_err(|error| Error::USizeInvalidFixnum { error })?;
+
+                        self.write_byte(VALUE_KIND_SYMBOL_LINK)?;
+                        self.write_fixnum(index)?;
+                    }
+                    None => {
+                        self.symbol_links.insert(handle);
+
+                        self.write_byte(VALUE_KIND_SYMBOL)?;
+                        self.write_byte_string(value.value())?;
+                    }
+                }
             }
             Value::Array(value) => {
                 let len = i32::try_from(value.len())

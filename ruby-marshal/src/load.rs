@@ -22,6 +22,8 @@ struct Loader<R> {
     reader: R,
 
     arena: ValueArena,
+
+    symbol_links: Vec<TypedValueHandle<SymbolValue>>,
 }
 
 impl<R> Loader<R> {
@@ -29,7 +31,11 @@ impl<R> Loader<R> {
     fn new(reader: R) -> Self {
         let arena = ValueArena::new();
 
-        Self { reader, arena }
+        Self {
+            reader,
+            arena,
+            symbol_links: Vec::new(),
+        }
     }
 }
 
@@ -128,7 +134,22 @@ where
         let symbol = self.read_byte_string()?;
         let handle = self.arena.create_symbol(symbol);
 
+        self.symbol_links.push(handle);
+
         Ok(handle)
+    }
+
+    /// Read a symbol link.
+    fn read_symbol_link(&mut self) -> Result<TypedValueHandle<SymbolValue>, Error> {
+        let index = self.read_fixnum_value()?;
+        let index = usize::try_from(index).map_err(|error| Error::FixnumInvalidUSize { error })?;
+
+        let value = self
+            .symbol_links
+            .get(index)
+            .ok_or(Error::MissingSymbolLink { index })?;
+
+        Ok(*value)
     }
 
     /// Read an array
@@ -157,7 +178,7 @@ where
             VALUE_KIND_FALSE => Ok(self.arena.create_false().into()),
             VALUE_KIND_FIXNUM => Ok(self.read_fixnum()?.into()),
             VALUE_KIND_SYMBOL => Ok(self.read_symbol()?.into()),
-            VALUE_KIND_SYMBOL_LINK => todo!("symbol link"),
+            VALUE_KIND_SYMBOL_LINK => Ok(self.read_symbol_link()?.into()),
             VALUE_KIND_OBJECT_LINK => todo!("object link"),
             VALUE_KIND_ARRAY => Ok(self.read_array()?.into()),
             _ => Err(Error::InvalidValueKind { kind }),

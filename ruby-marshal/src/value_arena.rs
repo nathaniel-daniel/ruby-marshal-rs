@@ -8,36 +8,8 @@ pub use self::value::NilValue;
 pub use self::value::SymbolValue;
 pub use self::value::TrueValue;
 pub use self::value::Value;
+pub use self::value_handle::TypedValueHandle;
 pub use self::value_handle::ValueHandle;
-use std::marker::PhantomData;
-
-/// A typed version of a [`ValueHandle`].
-#[derive(Debug)]
-pub struct TypedValueHandle<T> {
-    handle: ValueHandle,
-    _data: PhantomData<T>,
-}
-
-impl<T> TypedValueHandle<T> {
-    /// Create a new [`TypedValueHandle`] from a [`ValueHandle`] without type checking.
-    pub(crate) fn new_unchecked(handle: ValueHandle) -> Self {
-        Self {
-            handle,
-            _data: PhantomData,
-        }
-    }
-
-    /// Get the raw untyped handle.
-    pub fn into_raw(self) -> ValueHandle {
-        self.handle
-    }
-}
-
-impl<T> From<TypedValueHandle<T>> for ValueHandle {
-    fn from(handle: TypedValueHandle<T>) -> Self {
-        handle.into_raw()
-    }
-}
 
 /// An arena of Ruby values.
 #[derive(Debug)]
