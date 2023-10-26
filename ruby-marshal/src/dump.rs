@@ -45,6 +45,12 @@ where
             return Ok(());
         }
 
+        if value > 0 && value < 123 {
+            let value = u8::try_from(value).unwrap();
+            self.writer.write_all(&[value + 5])?;
+            return Ok(());
+        }
+
         todo!("write fixnum {value}");
     }
 

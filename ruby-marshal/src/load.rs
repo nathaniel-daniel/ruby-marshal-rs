@@ -58,8 +58,18 @@ where
         if len == 0 {
             return Ok(0);
         }
+        let positive = (len as i8) > 0;
+        let byte = len;
 
-        todo!("{len}");
+        if positive {
+            if byte > 4 {
+                return Ok(i32::from(byte) - 5);
+            }
+
+            todo!("load fixnum {len}")
+        } else {
+            todo!("load negative fixnum")
+        }
     }
 
     fn read_fixnum(&mut self) -> Result<TypedValueHandle<FixnumValue>, Error> {
