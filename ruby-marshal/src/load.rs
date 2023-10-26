@@ -82,7 +82,18 @@ where
                 return Ok(i32::from(byte as i8) + 5);
             }
 
-            todo!("load negative fixnum")
+            let byte = -(byte as i8) as u8;
+            if usize::from(byte) > std::mem::size_of::<i32>() {
+                return Err(Error::InvalidFixnumSize { size: byte });
+            }
+
+            let mut n: i32 = -1;
+            for i in 0..byte {
+                n &= !(0xFF_i32 << (i * 8));
+                n |= i32::from(self.read_byte()?) << (i * 8);
+            }
+
+            Ok(n)
         }
     }
 
