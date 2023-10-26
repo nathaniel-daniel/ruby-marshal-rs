@@ -39,7 +39,7 @@ where
         Ok(())
     }
 
-    fn write_fixnum(&mut self, value: i32) -> Result<(), Error> {
+    fn write_fixnum(&mut self, mut value: i32) -> Result<(), Error> {
         if value == 0 {
             self.writer.write_all(&[0])?;
             return Ok(());
@@ -57,7 +57,25 @@ where
             return Ok(());
         }
 
-        todo!("write fixnum {value}");
+        let mut buffer = [0; std::mem::size_of::<i32>() + 1];
+        let mut buffer_size = 0;
+        for i in 1..(std::mem::size_of::<i32>() + 1) {
+            buffer[i] = u8::try_from(value & 0xFF).unwrap();
+            buffer_size = i + 1;
+
+            value >>= 8;
+            if value == 0 {
+                buffer[0] = u8::try_from(i).unwrap();
+                break;
+            }
+            if value == -1 {
+                buffer[0] = (-i8::try_from(i).unwrap()) as u8;
+                break;
+            }
+        }
+        self.writer.write_all(&buffer[..buffer_size])?;
+
+        Ok(())
     }
 
     /// Write a value

@@ -66,7 +66,17 @@ where
                 return Ok(i32::from(byte) - 5);
             }
 
-            todo!("load fixnum {len}")
+            if usize::from(byte) > std::mem::size_of::<i32>() {
+                return Err(Error::InvalidFixnumSize { size: byte });
+            }
+
+            let mut n: i32 = 0;
+            for i in 0..byte {
+                let byte = self.read_byte()?;
+                n |= i32::from(byte) << (i * 8);
+            }
+
+            Ok(n)
         } else {
             if (byte as i8) < -4 {
                 return Ok(i32::from(byte as i8) + 5);

@@ -44,6 +44,9 @@ pub enum Error {
         /// The invalid value handle
         handle: ValueHandle,
     },
+
+    /// The fixnum size is too large
+    InvalidFixnumSize { size: u8 },
 }
 
 impl std::fmt::Display for Error {
@@ -53,6 +56,7 @@ impl std::fmt::Display for Error {
             Self::Io(_error) => write!(f, "I/O error"),
             Self::InvalidValueKind { kind } => write!(f, "invalid value kind {kind}"),
             Self::InvalidValueHandle { .. } => write!(f, "invalid value handle"),
+            Self::InvalidFixnumSize { size } => write!(f, "invalid fixnum size {size}"),
         }
     }
 }
