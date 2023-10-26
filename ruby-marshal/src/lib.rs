@@ -1,6 +1,8 @@
+mod dump;
 mod load;
 mod value_arena;
 
+pub use self::dump::dump;
 pub use self::load::load;
 pub use self::value_arena::Value;
 pub use self::value_arena::ValueArena;
@@ -30,6 +32,12 @@ pub enum Error {
 
     /// An invalid value kind was encountered
     InvalidValueKind { kind: u8 },
+
+    /// A value handle was invalid
+    InvalidValueHandle {
+        /// The invalid value handle
+        handle: ValueHandle,
+    },
 }
 
 impl std::fmt::Display for Error {
@@ -37,7 +45,8 @@ impl std::fmt::Display for Error {
         match self {
             Self::InvalidVersion { major, minor } => write!(f, "invalid version {major}.{minor}"),
             Self::Io(_error) => write!(f, "I/O error"),
-            Self::InvalidValueKind { kind } => write!(f, "invalid value kind {}", kind),
+            Self::InvalidValueKind { kind } => write!(f, "invalid value kind {kind}"),
+            Self::InvalidValueHandle { .. } => write!(f, "invalid value handle"),
         }
     }
 }
@@ -68,7 +77,11 @@ mod test {
             let data = std::fs::read(entry.path()).expect("failed to read entry");
 
             let value_arena = load(std::io::Cursor::new(&data)).expect("failed to load");
-            dbg!(value_arena.get(value_arena.root()));
+
+            let mut new_data = Vec::new();
+            dump(&mut new_data, &value_arena).expect("failed to dump");
+
+            assert!(data == new_data);
         }
     }
 }
