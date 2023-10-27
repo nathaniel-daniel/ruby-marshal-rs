@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "ruby-marshal",
+    "ruby-marshal-cli",
 ]
 
 [profile.release]
