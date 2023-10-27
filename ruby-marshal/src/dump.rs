@@ -9,6 +9,7 @@ use crate::MINOR_VERSION;
 use crate::VALUE_KIND_ARRAY;
 use crate::VALUE_KIND_FALSE;
 use crate::VALUE_KIND_FIXNUM;
+use crate::VALUE_KIND_INSTANCE_VARIABLES;
 use crate::VALUE_KIND_NIL;
 use crate::VALUE_KIND_OBJECT_LINK;
 use crate::VALUE_KIND_STRING;
@@ -192,8 +193,27 @@ where
                     return Ok(());
                 }
 
-                self.write_byte(VALUE_KIND_STRING)?;
-                self.write_byte_string(value.value())?;
+                match value.instance_variables() {
+                    Some(instance_variables) => {
+                        self.write_byte(VALUE_KIND_INSTANCE_VARIABLES)?;
+
+                        self.write_byte(VALUE_KIND_STRING)?;
+                        self.write_byte_string(value.value())?;
+
+                        let num_vars = i32::try_from(instance_variables.len())
+                            .map_err(|error| Error::USizeInvalidFixnum { error })?;
+                        self.write_fixnum(num_vars)?;
+
+                        for (name, value) in instance_variables.iter() {
+                            self.write_value((*name).into())?;
+                            self.write_value(*value)?;
+                        }
+                    }
+                    None => {
+                        self.write_byte(VALUE_KIND_STRING)?;
+                        self.write_byte_string(value.value())?;
+                    }
+                }
             }
         }
 

@@ -4,6 +4,7 @@ use crate::FixnumValue;
 use crate::StringValue;
 use crate::SymbolValue;
 use crate::TypedValueHandle;
+use crate::Value;
 use crate::ValueArena;
 use crate::ValueHandle;
 use crate::MAJOR_VERSION;
@@ -11,12 +12,14 @@ use crate::MINOR_VERSION;
 use crate::VALUE_KIND_ARRAY;
 use crate::VALUE_KIND_FALSE;
 use crate::VALUE_KIND_FIXNUM;
+use crate::VALUE_KIND_INSTANCE_VARIABLES;
 use crate::VALUE_KIND_NIL;
 use crate::VALUE_KIND_OBJECT_LINK;
 use crate::VALUE_KIND_STRING;
 use crate::VALUE_KIND_SYMBOL;
 use crate::VALUE_KIND_SYMBOL_LINK;
 use crate::VALUE_KIND_TRUE;
+use indexmap::IndexMap;
 use std::io::Read;
 
 #[derive(Debug)]
@@ -208,6 +211,52 @@ where
             VALUE_KIND_SYMBOL => Ok(self.read_symbol()?.into()),
             VALUE_KIND_SYMBOL_LINK => Ok(self.read_symbol_link()?.into()),
             VALUE_KIND_OBJECT_LINK => Ok(self.read_object_link()?),
+            VALUE_KIND_INSTANCE_VARIABLES => {
+                let value = self.read_value()?;
+
+                let num_pairs = self.read_fixnum_value()?;
+                let num_pairs = usize::try_from(num_pairs)
+                    .map_err(|error| Error::FixnumInvalidUSize { error })?;
+                let mut instance_variables = IndexMap::with_capacity(num_pairs);
+                for _ in 0..num_pairs {
+                    let value_kind = self.read_byte()?;
+                    if value_kind != VALUE_KIND_SYMBOL {
+                        return Err(Error::UnexpectedValueKind {
+                            expected: VALUE_KIND_SYMBOL,
+                            actual: value_kind,
+                        });
+                    }
+
+                    let symbol = self.read_symbol()?;
+                    let value = self.read_value()?;
+
+                    if instance_variables.insert(symbol, value).is_some() {
+                        let symbol_value =
+                            self.arena
+                                .get_symbol(symbol)
+                                .ok_or(Error::InvalidValueHandle {
+                                    handle: symbol.into(),
+                                })?;
+
+                        return Err(Error::DuplicateInstanceVariable {
+                            name: symbol_value.value().into(),
+                        });
+                    }
+                }
+
+                match self
+                    .arena
+                    .get_mut(value)
+                    .ok_or(Error::InvalidValueHandle { handle: value })?
+                {
+                    Value::String(value) => {
+                        value.set_instance_variables(Some(instance_variables));
+                    }
+                    _ => return Err(Error::NotAnObject),
+                }
+
+                Ok(value)
+            }
             VALUE_KIND_ARRAY => Ok(self.read_array()?.into()),
             VALUE_KIND_STRING => Ok(self.read_string()?.into()),
             _ => Err(Error::InvalidValueKind { kind }),

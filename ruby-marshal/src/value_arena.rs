@@ -62,6 +62,14 @@ impl ValueArena {
         self.arena.get_mut(handle.into().index)
     }
 
+    /// Get a reference to the [`SymbolValue`] denoted by the given [`TypedValueHandle`].
+    ///
+    /// # Panics
+    /// Panics if the value is not a SymbolValue.
+    pub fn get_symbol(&self, handle: TypedValueHandle<SymbolValue>) -> Option<&SymbolValue> {
+        Some(self.get(handle)?.as_symbol().expect("not a symbol"))
+    }
+
     /// Create an orphan `Nil` value and return the handle.
     pub fn create_nil(&mut self) -> TypedValueHandle<NilValue> {
         let index = self.arena.insert(Value::Nil(NilValue));

@@ -1,4 +1,6 @@
+use crate::TypedValueHandle;
 use crate::ValueHandle;
+use indexmap::IndexMap;
 
 /// A Ruby Value
 #[derive(Debug)]
@@ -23,6 +25,16 @@ pub enum Value {
 
     /// A String
     String(StringValue),
+}
+
+impl Value {
+    /// Get a ref to the [`SymbolValue`], if it is a symbol.
+    pub fn as_symbol(&self) -> Option<&SymbolValue> {
+        match self {
+            Self::Symbol(value) => Some(value),
+            _ => None,
+        }
+    }
 }
 
 impl From<NilValue> for Value {
@@ -147,16 +159,39 @@ impl ArrayValue {
 #[derive(Debug)]
 pub struct StringValue {
     value: Vec<u8>,
+    instance_variables: Option<IndexMap<TypedValueHandle<SymbolValue>, ValueHandle>>,
 }
 
 impl StringValue {
     /// Create a new [`String`].
     pub(crate) fn new(value: Vec<u8>) -> Self {
-        Self { value }
+        Self {
+            value,
+            instance_variables: None,
+        }
     }
 
     /// Get the inner value.
     pub fn value(&self) -> &[u8] {
         &self.value
+    }
+
+    /// Get the instance variables
+    pub fn instance_variables(
+        &self,
+    ) -> Option<&IndexMap<TypedValueHandle<SymbolValue>, ValueHandle>> {
+        self.instance_variables.as_ref()
+    }
+
+    /// Set the instance variables.
+    ///
+    /// # Returns
+    /// Returns the old instance variables
+    pub(crate) fn set_instance_variables(
+        &mut self,
+        mut instance_variables: Option<IndexMap<TypedValueHandle<SymbolValue>, ValueHandle>>,
+    ) -> Option<IndexMap<TypedValueHandle<SymbolValue>, ValueHandle>> {
+        std::mem::swap(&mut self.instance_variables, &mut instance_variables);
+        instance_variables
     }
 }
