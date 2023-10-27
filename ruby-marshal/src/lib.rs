@@ -8,6 +8,7 @@ pub use self::value_arena::ArrayValue;
 pub use self::value_arena::FalseValue;
 pub use self::value_arena::FixnumValue;
 pub use self::value_arena::NilValue;
+pub use self::value_arena::StringValue;
 pub use self::value_arena::SymbolValue;
 pub use self::value_arena::TrueValue;
 pub use self::value_arena::TypedValueHandle;
@@ -25,7 +26,9 @@ const VALUE_KIND_FIXNUM: u8 = b'i';
 const VALUE_KIND_SYMBOL: u8 = b':';
 const VALUE_KIND_SYMBOL_LINK: u8 = b';';
 const VALUE_KIND_OBJECT_LINK: u8 = b'@';
+const VALUE_KIND_INSTANCE_VARIABLES: u8 = b'I';
 const VALUE_KIND_ARRAY: u8 = b'[';
+const VALUE_KIND_STRING: u8 = b'"';
 
 /// The library error type
 #[derive(Debug)]
@@ -65,6 +68,18 @@ pub enum Error {
 
     /// Missing an object link
     MissingObjectLink { index: usize },
+
+    /// Unexpected Value Kind
+    UnexpectedValueKind { expected: u8, actual: u8 },
+
+    /// The value is not an object
+    NotAnObject,
+
+    /// There was a duplicate instance variable
+    DuplicateInstanceVariable {
+        /// The duplicated variable
+        name: Vec<u8>,
+    },
 }
 
 impl std::fmt::Display for Error {
@@ -79,6 +94,14 @@ impl std::fmt::Display for Error {
             Self::USizeInvalidFixnum { .. } => write!(f, "usize is not a valid Fixnum"),
             Self::MissingSymbolLink { index } => write!(f, "missing symbol link {index}"),
             Self::MissingObjectLink { index } => write!(f, "missing object link {index}"),
+            Self::UnexpectedValueKind { expected, actual } => write!(
+                f,
+                "unexpected value kind, expected {expected} but got {actual}"
+            ),
+            Self::NotAnObject => write!(f, "not an object"),
+            Self::DuplicateInstanceVariable { name } => {
+                write!(f, "duplicate instance variable \"{name:?}\"")
+            }
         }
     }
 }

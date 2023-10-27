@@ -38,6 +38,7 @@ For my use case, I was forced to implement this library.
 
 ## References
  * https://ruby-doc.org/core-2.4.8/
+ * http://jakegoulding.com/blog/2013/01/16/another-dip-into-rubys-marshal-format/
 
 ## License
 Licensed under either of

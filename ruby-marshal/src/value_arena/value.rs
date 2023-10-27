@@ -1,4 +1,6 @@
+use crate::TypedValueHandle;
 use crate::ValueHandle;
+use indexmap::IndexMap;
 
 /// A Ruby Value
 #[derive(Debug)]
@@ -20,6 +22,19 @@ pub enum Value {
 
     /// An Array
     Array(ArrayValue),
+
+    /// A String
+    String(StringValue),
+}
+
+impl Value {
+    /// Get a ref to the [`SymbolValue`], if it is a symbol.
+    pub fn as_symbol(&self) -> Option<&SymbolValue> {
+        match self {
+            Self::Symbol(value) => Some(value),
+            _ => None,
+        }
+    }
 }
 
 impl From<NilValue> for Value {
@@ -55,6 +70,12 @@ impl From<SymbolValue> for Value {
 impl From<ArrayValue> for Value {
     fn from(value: ArrayValue) -> Self {
         Self::Array(value)
+    }
+}
+
+impl From<StringValue> for Value {
+    fn from(value: StringValue) -> Self {
+        Self::String(value)
     }
 }
 
@@ -131,5 +152,46 @@ impl ArrayValue {
     /// Check if this is empty
     pub fn is_empty(&self) -> bool {
         self.value.is_empty()
+    }
+}
+
+/// A String
+#[derive(Debug)]
+pub struct StringValue {
+    value: Vec<u8>,
+    instance_variables: Option<IndexMap<TypedValueHandle<SymbolValue>, ValueHandle>>,
+}
+
+impl StringValue {
+    /// Create a new [`String`].
+    pub(crate) fn new(value: Vec<u8>) -> Self {
+        Self {
+            value,
+            instance_variables: None,
+        }
+    }
+
+    /// Get the inner value.
+    pub fn value(&self) -> &[u8] {
+        &self.value
+    }
+
+    /// Get the instance variables
+    pub fn instance_variables(
+        &self,
+    ) -> Option<&IndexMap<TypedValueHandle<SymbolValue>, ValueHandle>> {
+        self.instance_variables.as_ref()
+    }
+
+    /// Set the instance variables.
+    ///
+    /// # Returns
+    /// Returns the old instance variables
+    pub(crate) fn set_instance_variables(
+        &mut self,
+        mut instance_variables: Option<IndexMap<TypedValueHandle<SymbolValue>, ValueHandle>>,
+    ) -> Option<IndexMap<TypedValueHandle<SymbolValue>, ValueHandle>> {
+        std::mem::swap(&mut self.instance_variables, &mut instance_variables);
+        instance_variables
     }
 }

@@ -5,6 +5,7 @@ pub use self::value::ArrayValue;
 pub use self::value::FalseValue;
 pub use self::value::FixnumValue;
 pub use self::value::NilValue;
+pub use self::value::StringValue;
 pub use self::value::SymbolValue;
 pub use self::value::TrueValue;
 pub use self::value::Value;
@@ -61,6 +62,14 @@ impl ValueArena {
         self.arena.get_mut(handle.into().index)
     }
 
+    /// Get a reference to the [`SymbolValue`] denoted by the given [`TypedValueHandle`].
+    ///
+    /// # Panics
+    /// Panics if the value is not a SymbolValue.
+    pub fn get_symbol(&self, handle: TypedValueHandle<SymbolValue>) -> Option<&SymbolValue> {
+        Some(self.get(handle)?.as_symbol().expect("not a symbol"))
+    }
+
     /// Create an orphan `Nil` value and return the handle.
     pub fn create_nil(&mut self) -> TypedValueHandle<NilValue> {
         let index = self.arena.insert(Value::Nil(NilValue));
@@ -96,6 +105,14 @@ impl ValueArena {
     /// Create an orphan `Symbol` value and return the handle.
     pub fn create_symbol(&mut self, value: Vec<u8>) -> TypedValueHandle<SymbolValue> {
         let index = self.arena.insert(Value::Symbol(SymbolValue::new(value)));
+        let handle = ValueHandle::new(index);
+
+        TypedValueHandle::new_unchecked(handle)
+    }
+
+    /// Create an orphan `String` value and return the handle.
+    pub fn create_string(&mut self, value: Vec<u8>) -> TypedValueHandle<StringValue> {
+        let index = self.arena.insert(Value::String(StringValue::new(value)));
         let handle = ValueHandle::new(index);
 
         TypedValueHandle::new_unchecked(handle)
