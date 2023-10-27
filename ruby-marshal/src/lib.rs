@@ -8,6 +8,7 @@ pub use self::value_arena::ArrayValue;
 pub use self::value_arena::FalseValue;
 pub use self::value_arena::FixnumValue;
 pub use self::value_arena::NilValue;
+pub use self::value_arena::StringValue;
 pub use self::value_arena::SymbolValue;
 pub use self::value_arena::TrueValue;
 pub use self::value_arena::TypedValueHandle;
@@ -26,6 +27,7 @@ const VALUE_KIND_SYMBOL: u8 = b':';
 const VALUE_KIND_SYMBOL_LINK: u8 = b';';
 const VALUE_KIND_OBJECT_LINK: u8 = b'@';
 const VALUE_KIND_ARRAY: u8 = b'[';
+const VALUE_KIND_STRING: u8 = b'"';
 
 /// The library error type
 #[derive(Debug)]

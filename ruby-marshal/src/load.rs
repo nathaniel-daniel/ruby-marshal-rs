@@ -1,6 +1,7 @@
 use crate::ArrayValue;
 use crate::Error;
 use crate::FixnumValue;
+use crate::StringValue;
 use crate::SymbolValue;
 use crate::TypedValueHandle;
 use crate::ValueArena;
@@ -12,6 +13,7 @@ use crate::VALUE_KIND_FALSE;
 use crate::VALUE_KIND_FIXNUM;
 use crate::VALUE_KIND_NIL;
 use crate::VALUE_KIND_OBJECT_LINK;
+use crate::VALUE_KIND_STRING;
 use crate::VALUE_KIND_SYMBOL;
 use crate::VALUE_KIND_SYMBOL_LINK;
 use crate::VALUE_KIND_TRUE;
@@ -185,6 +187,16 @@ where
         Ok(TypedValueHandle::new_unchecked(handle))
     }
 
+    /// Read a string
+    fn read_string(&mut self) -> Result<TypedValueHandle<StringValue>, Error> {
+        let data = self.read_byte_string()?;
+
+        let handle = self.arena.create_string(data);
+        self.object_links.push(handle.into());
+
+        Ok(handle)
+    }
+
     /// Read the next value.
     fn read_value(&mut self) -> Result<ValueHandle, Error> {
         let kind = self.read_byte()?;
@@ -197,6 +209,7 @@ where
             VALUE_KIND_SYMBOL_LINK => Ok(self.read_symbol_link()?.into()),
             VALUE_KIND_OBJECT_LINK => Ok(self.read_object_link()?),
             VALUE_KIND_ARRAY => Ok(self.read_array()?.into()),
+            VALUE_KIND_STRING => Ok(self.read_string()?.into()),
             _ => Err(Error::InvalidValueKind { kind }),
         }
     }

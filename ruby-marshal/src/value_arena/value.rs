@@ -20,6 +20,9 @@ pub enum Value {
 
     /// An Array
     Array(ArrayValue),
+
+    /// A String
+    String(StringValue),
 }
 
 impl From<NilValue> for Value {
@@ -55,6 +58,12 @@ impl From<SymbolValue> for Value {
 impl From<ArrayValue> for Value {
     fn from(value: ArrayValue) -> Self {
         Self::Array(value)
+    }
+}
+
+impl From<StringValue> for Value {
+    fn from(value: StringValue) -> Self {
+        Self::String(value)
     }
 }
 
@@ -131,5 +140,23 @@ impl ArrayValue {
     /// Check if this is empty
     pub fn is_empty(&self) -> bool {
         self.value.is_empty()
+    }
+}
+
+/// A String
+#[derive(Debug)]
+pub struct StringValue {
+    value: Vec<u8>,
+}
+
+impl StringValue {
+    /// Create a new [`String`].
+    pub(crate) fn new(value: Vec<u8>) -> Self {
+        Self { value }
+    }
+
+    /// Get the inner value.
+    pub fn value(&self) -> &[u8] {
+        &self.value
     }
 }

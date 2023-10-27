@@ -11,6 +11,7 @@ use crate::VALUE_KIND_FALSE;
 use crate::VALUE_KIND_FIXNUM;
 use crate::VALUE_KIND_NIL;
 use crate::VALUE_KIND_OBJECT_LINK;
+use crate::VALUE_KIND_STRING;
 use crate::VALUE_KIND_SYMBOL;
 use crate::VALUE_KIND_SYMBOL_LINK;
 use crate::VALUE_KIND_TRUE;
@@ -185,6 +186,14 @@ where
                 for value in value.value().iter() {
                     self.write_value(*value)?;
                 }
+            }
+            Value::String(value) => {
+                if self.try_write_value_object_link(handle)? {
+                    return Ok(());
+                }
+
+                self.write_byte(VALUE_KIND_STRING)?;
+                self.write_byte_string(value.value())?;
             }
         }
 
