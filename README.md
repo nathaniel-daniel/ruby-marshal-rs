@@ -23,12 +23,12 @@ I could not make that assumption for my use case as I did not control the marsha
 
 Secondly, `thurgood` makes the assumption that serialized objects are not cyclic, and as a result, cannot handle cycles correctly/safely.
 In addition, it uses some questionable `unsafe` blocks to implement object links (this library currently uses 100% safe code, but that is not guaranteed to always be the case).
-While my use case did not directly require cyclic objects, I still wanted the ability to handle cyclic objects safely.
+While my use case did not directly require cyclic objects, I still wanted the ability to handle cyclic objects safely as I did not control the marshal data.
 
 
 Thirdly, it focuses closely on creating a `serde_json`-like object model, providing close compatibility between Ruby objects and JSON.
 It even provided methods for converting between the two.
-In contrast, this library uses an arena to allocate Ruby Objects, mostly to handle cycles cleanly.
+In contrast, this library uses an arena to allocate Ruby values, mostly to handle cycles cleanly.
 However, interacting with an arena is closer to how one would interact with a DOM;
 it is much more difficult to interact with the objects in this library.
 

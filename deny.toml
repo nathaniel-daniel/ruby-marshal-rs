@@ -18,7 +18,7 @@ allow-osi-fsf-free = "neither"
 confidence-threshold = 0.93
 default = "deny"
 private = { ignore = true }
-allow = [ "Apache-2.0", "MIT", "MPL-2.0" ]
+allow = [ "Apache-2.0", "MIT", "MPL-2.0", "Unicode-DFS-2016", "BSD-3-Clause" ]
 
 [[licenses.clarify]]
 name = "ring"
@@ -51,3 +51,8 @@ skip = []
 unknown-registry = "warn"
 unknown-git = "warn"
 allow-registry = [ "https://github.com/rust-lang/crates.io-index" ]
+
+[sources.allow-org]
+github = [
+    "nathaniel-daniel",
+]
