@@ -14,6 +14,7 @@ pub use self::value_arena::StringValue;
 pub use self::value_arena::SymbolValue;
 pub use self::value_arena::TrueValue;
 pub use self::value_arena::TypedValueHandle;
+pub use self::value_arena::UserDefinedValue;
 pub use self::value_arena::Value;
 pub use self::value_arena::ValueArena;
 pub use self::value_arena::ValueHandle;
@@ -34,6 +35,7 @@ const VALUE_KIND_HASH: u8 = b'{';
 const VALUE_KIND_HASH_DEFAULT: u8 = b'}';
 const VALUE_KIND_OBJECT: u8 = b'o';
 const VALUE_KIND_STRING: u8 = b'"';
+const VALUE_KIND_USER_DEFINED: u8 = b'u';
 
 /// The library error type
 #[derive(Debug)]

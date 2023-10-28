@@ -30,6 +30,9 @@ pub enum Value {
 
     /// A String
     String(StringValue),
+
+    /// A User Defined Value
+    UserDefined(UserDefinedValue),
 }
 
 impl Value {
@@ -93,6 +96,12 @@ impl From<ObjectValue> for Value {
 impl From<StringValue> for Value {
     fn from(value: StringValue) -> Self {
         Self::String(value)
+    }
+}
+
+impl From<UserDefinedValue> for Value {
+    fn from(value: UserDefinedValue) -> Self {
+        Self::UserDefined(value)
     }
 }
 
@@ -246,6 +255,52 @@ impl StringValue {
             value,
             instance_variables: None,
         }
+    }
+
+    /// Get the inner value.
+    pub fn value(&self) -> &[u8] {
+        &self.value
+    }
+
+    /// Get the instance variables
+    pub fn instance_variables(&self) -> Option<&[(TypedValueHandle<SymbolValue>, ValueHandle)]> {
+        self.instance_variables.as_deref()
+    }
+
+    /// Set the instance variables.
+    ///
+    /// # Returns
+    /// Returns the old instance variables
+    pub(crate) fn set_instance_variables(
+        &mut self,
+        mut instance_variables: Option<Vec<(TypedValueHandle<SymbolValue>, ValueHandle)>>,
+    ) -> Option<Vec<(TypedValueHandle<SymbolValue>, ValueHandle)>> {
+        std::mem::swap(&mut self.instance_variables, &mut instance_variables);
+        instance_variables
+    }
+}
+
+/// A User Defined value
+#[derive(Debug)]
+pub struct UserDefinedValue {
+    name: TypedValueHandle<SymbolValue>,
+    value: Vec<u8>,
+    instance_variables: Option<Vec<(TypedValueHandle<SymbolValue>, ValueHandle)>>,
+}
+
+impl UserDefinedValue {
+    /// Create a new [`UserDefinedValue`].
+    pub(crate) fn new(name: TypedValueHandle<SymbolValue>, value: Vec<u8>) -> Self {
+        Self {
+            name,
+            value,
+            instance_variables: None,
+        }
+    }
+
+    /// Get the name.
+    pub fn name(&self) -> TypedValueHandle<SymbolValue> {
+        self.name
     }
 
     /// Get the inner value.

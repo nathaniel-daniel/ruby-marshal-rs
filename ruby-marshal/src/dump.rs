@@ -19,6 +19,7 @@ use crate::VALUE_KIND_STRING;
 use crate::VALUE_KIND_SYMBOL;
 use crate::VALUE_KIND_SYMBOL_LINK;
 use crate::VALUE_KIND_TRUE;
+use crate::VALUE_KIND_USER_DEFINED;
 use indexmap::IndexSet;
 use std::io::Write;
 
@@ -264,6 +265,28 @@ where
                     }
                     None => {
                         self.write_byte(VALUE_KIND_STRING)?;
+                        self.write_byte_string(value.value())?;
+                    }
+                }
+            }
+            Value::UserDefined(value) => {
+                if self.try_write_value_object_link(handle)? {
+                    return Ok(());
+                }
+
+                match value.instance_variables() {
+                    Some(instance_variables) => {
+                        self.write_byte(VALUE_KIND_INSTANCE_VARIABLES)?;
+
+                        self.write_byte(VALUE_KIND_USER_DEFINED)?;
+                        self.write_value(value.name().into())?;
+                        self.write_byte_string(value.value())?;
+
+                        self.write_instance_variables(instance_variables)?;
+                    }
+                    None => {
+                        self.write_byte(VALUE_KIND_USER_DEFINED)?;
+                        self.write_value(value.name().into())?;
                         self.write_byte_string(value.value())?;
                     }
                 }

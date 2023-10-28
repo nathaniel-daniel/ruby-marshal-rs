@@ -10,6 +10,7 @@ A Rust implementation of Ruby's Marshal module. Currently supports only a part o
  * Symbol Link
  * Object Link
  * Array
+ * Hash
  * Object
  * String
 

@@ -6,6 +6,7 @@ use crate::ObjectValue;
 use crate::StringValue;
 use crate::SymbolValue;
 use crate::TypedValueHandle;
+use crate::UserDefinedValue;
 use crate::Value;
 use crate::ValueArena;
 use crate::ValueHandle;
@@ -24,6 +25,7 @@ use crate::VALUE_KIND_STRING;
 use crate::VALUE_KIND_SYMBOL;
 use crate::VALUE_KIND_SYMBOL_LINK;
 use crate::VALUE_KIND_TRUE;
+use crate::VALUE_KIND_USER_DEFINED;
 use std::io::Read;
 
 #[derive(Debug)]
@@ -266,6 +268,14 @@ where
         Ok(handle)
     }
 
+    /// Read a user defined
+    fn read_user_defined(&mut self) -> Result<TypedValueHandle<UserDefinedValue>, Error> {
+        let name = self.read_value_symbol_like()?;
+        let value = self.read_byte_string()?;
+
+        Ok(self.arena.create_user_defined(name, value))
+    }
+
     /// Read the next value, failing if it is not a symbol-like value.
     fn read_value_symbol_like(&mut self) -> Result<TypedValueHandle<SymbolValue>, Error> {
         let kind = self.read_byte()?;
@@ -303,6 +313,9 @@ where
                     Value::String(value) => {
                         value.set_instance_variables(Some(instance_variables));
                     }
+                    Value::UserDefined(value) => {
+                        value.set_instance_variables(Some(instance_variables));
+                    }
                     _ => return Err(Error::NotAnObject),
                 }
 
@@ -313,6 +326,7 @@ where
             VALUE_KIND_HASH_DEFAULT => Ok(self.read_hash(true)?.into()),
             VALUE_KIND_OBJECT => Ok(self.read_object()?.into()),
             VALUE_KIND_STRING => Ok(self.read_string()?.into()),
+            VALUE_KIND_USER_DEFINED => Ok(self.read_user_defined()?.into()),
             _ => Err(Error::InvalidValueKind { kind }),
         }
     }
