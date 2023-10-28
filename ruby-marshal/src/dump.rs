@@ -212,6 +212,10 @@ where
                 }
             }
             Value::Hash(value) => {
+                if self.try_write_value_object_link(handle)? {
+                    return Ok(());
+                }
+                
                 self.write_byte(VALUE_KIND_HASH)?;
 
                 let value = value.value();

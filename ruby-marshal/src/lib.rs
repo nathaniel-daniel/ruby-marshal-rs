@@ -135,6 +135,11 @@ mod test {
     fn kitchen_sink() {
         for entry in std::fs::read_dir("test_data").expect("failed to read \"test_data\"") {
             let entry = entry.expect("failed to read entry");
+            let file_type = entry.file_type().expect("failed to get file type");
+            if file_type.is_dir() {
+                continue;
+            }
+
             let data = std::fs::read(entry.path()).expect("failed to read entry");
 
             let value_arena = load(std::io::Cursor::new(&data)).expect("failed to load");

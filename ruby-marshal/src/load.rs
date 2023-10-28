@@ -215,6 +215,9 @@ where
 
     /// Read a hash.
     fn read_hash(&mut self) -> Result<TypedValueHandle<HashValue>, Error> {
+        let handle = self.arena.create_nil().into_raw();
+        self.object_links.push(handle);
+
         let num_pairs = self.read_fixnum_value()?;
         let num_pairs =
             usize::try_from(num_pairs).map_err(|error| Error::FixnumInvalidUSize { error })?;
@@ -222,13 +225,15 @@ where
         // TODO: Consider making this a map.
         let mut pairs = Vec::with_capacity(num_pairs);
         for _ in 0..num_pairs {
-            let symbol = self.read_value()?;
+            let key = self.read_value()?;
             let value = self.read_value()?;
 
-            pairs.push((symbol, value));
+            pairs.push((key, value));
         }
 
-        Ok(self.arena.create_hash(pairs))
+        *self.arena.get_mut(handle).unwrap() = HashValue::new(pairs).into();
+
+        Ok(TypedValueHandle::new_unchecked(handle))
     }
 
     /// Read an object
