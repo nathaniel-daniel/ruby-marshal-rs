@@ -51,7 +51,7 @@ fn ruby2json_value(
 
             Ok(serde_json::Value::Array(array))
         }
-        ruby_marshal::Value::Object(value) => {
+        ruby_marshal::Value::Object(_value) => {
             bail!("cannot convert an Object to Json")
         }
         ruby_marshal::Value::String(value) => {
