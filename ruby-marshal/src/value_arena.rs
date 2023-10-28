@@ -5,6 +5,7 @@ pub use self::value::ArrayValue;
 pub use self::value::FalseValue;
 pub use self::value::FixnumValue;
 pub use self::value::NilValue;
+pub use self::value::ObjectValue;
 pub use self::value::StringValue;
 pub use self::value::SymbolValue;
 pub use self::value::TrueValue;
@@ -105,6 +106,20 @@ impl ValueArena {
     /// Create an orphan `Symbol` value and return the handle.
     pub fn create_symbol(&mut self, value: Vec<u8>) -> TypedValueHandle<SymbolValue> {
         let index = self.arena.insert(Value::Symbol(SymbolValue::new(value)));
+        let handle = ValueHandle::new(index);
+
+        TypedValueHandle::new_unchecked(handle)
+    }
+
+    /// Create an orphan `Object` value and return the handle.
+    pub fn create_object(
+        &mut self,
+        name: TypedValueHandle<SymbolValue>,
+        instance_variables: Vec<(TypedValueHandle<SymbolValue>, ValueHandle)>,
+    ) -> TypedValueHandle<ObjectValue> {
+        let index = self
+            .arena
+            .insert(Value::Object(ObjectValue::new(name, instance_variables)));
         let handle = ValueHandle::new(index);
 
         TypedValueHandle::new_unchecked(handle)

@@ -10,6 +10,7 @@ A Rust implementation of Ruby's Marshal module. Currently supports only a part o
  * Symbol Link
  * Object Link
  * Array
+ * String
 
 ## Alternative Implementation (thurgood)
 Why not use/improve [`thurgood`](https://docs.rs/thurgood/latest/thurgood/)? 
