@@ -1,6 +1,7 @@
 use crate::ArrayValue;
 use crate::Error;
 use crate::FixnumValue;
+use crate::HashValue;
 use crate::ObjectValue;
 use crate::StringValue;
 use crate::SymbolValue;
@@ -13,6 +14,8 @@ use crate::MINOR_VERSION;
 use crate::VALUE_KIND_ARRAY;
 use crate::VALUE_KIND_FALSE;
 use crate::VALUE_KIND_FIXNUM;
+use crate::VALUE_KIND_HASH;
+use crate::VALUE_KIND_HASH_DEFAULT;
 use crate::VALUE_KIND_INSTANCE_VARIABLES;
 use crate::VALUE_KIND_NIL;
 use crate::VALUE_KIND_OBJECT;
@@ -211,8 +214,37 @@ where
         Ok(TypedValueHandle::new_unchecked(handle))
     }
 
+    /// Read a hash.
+    fn read_hash(&mut self, has_default_value: bool) -> Result<TypedValueHandle<HashValue>, Error> {
+        let handle = self.arena.create_nil().into_raw();
+        self.object_links.push(handle);
+
+        let num_pairs = self.read_fixnum_value()?;
+        let num_pairs =
+            usize::try_from(num_pairs).map_err(|error| Error::FixnumInvalidUSize { error })?;
+
+        // TODO: Consider making this a map.
+        let mut pairs = Vec::with_capacity(num_pairs);
+        for _ in 0..num_pairs {
+            let key = self.read_value()?;
+            let value = self.read_value()?;
+
+            pairs.push((key, value));
+        }
+
+        let default_value = if has_default_value {
+            Some(self.read_value()?)
+        } else {
+            None
+        };
+
+        *self.arena.get_mut(handle).unwrap() = HashValue::new(pairs, default_value).into();
+
+        Ok(TypedValueHandle::new_unchecked(handle))
+    }
+
     /// Read an object
-    fn read_object(&mut self) -> Result<TypedValueHandle<()>, Error> {
+    fn read_object(&mut self) -> Result<TypedValueHandle<ObjectValue>, Error> {
         let handle = self.arena.create_nil().into_raw();
         self.object_links.push(handle);
 
@@ -277,6 +309,8 @@ where
                 Ok(value)
             }
             VALUE_KIND_ARRAY => Ok(self.read_array()?.into()),
+            VALUE_KIND_HASH => Ok(self.read_hash(false)?.into()),
+            VALUE_KIND_HASH_DEFAULT => Ok(self.read_hash(true)?.into()),
             VALUE_KIND_OBJECT => Ok(self.read_object()?.into()),
             VALUE_KIND_STRING => Ok(self.read_string()?.into()),
             _ => Err(Error::InvalidValueKind { kind }),

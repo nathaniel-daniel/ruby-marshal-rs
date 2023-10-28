@@ -51,6 +51,10 @@ fn ruby2json_value(
 
             Ok(serde_json::Value::Array(array))
         }
+        ruby_marshal::Value::Hash(_value) => {
+            // TODO: This is possible if the has only has string keys
+            bail!("cannot convert an Object to Json")
+        }
         ruby_marshal::Value::Object(_value) => {
             bail!("cannot convert an Object to Json")
         }
