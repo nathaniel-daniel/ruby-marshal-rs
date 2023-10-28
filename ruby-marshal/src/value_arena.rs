@@ -116,8 +116,11 @@ impl ValueArena {
     pub fn create_hash(
         &mut self,
         value: Vec<(ValueHandle, ValueHandle)>,
+        default_value: Option<ValueHandle>,
     ) -> TypedValueHandle<HashValue> {
-        let index = self.arena.insert(Value::Hash(HashValue::new(value)));
+        let index = self
+            .arena
+            .insert(Value::Hash(HashValue::new(value, default_value)));
         let handle = ValueHandle::new(index);
 
         TypedValueHandle::new_unchecked(handle)

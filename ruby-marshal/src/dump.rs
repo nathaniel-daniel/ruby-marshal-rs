@@ -10,6 +10,7 @@ use crate::VALUE_KIND_ARRAY;
 use crate::VALUE_KIND_FALSE;
 use crate::VALUE_KIND_FIXNUM;
 use crate::VALUE_KIND_HASH;
+use crate::VALUE_KIND_HASH_DEFAULT;
 use crate::VALUE_KIND_INSTANCE_VARIABLES;
 use crate::VALUE_KIND_NIL;
 use crate::VALUE_KIND_OBJECT;
@@ -215,10 +216,15 @@ where
                 if self.try_write_value_object_link(handle)? {
                     return Ok(());
                 }
-                
-                self.write_byte(VALUE_KIND_HASH)?;
 
+                let default_value = value.default_value();
                 let value = value.value();
+
+                if default_value.is_some() {
+                    self.write_byte(VALUE_KIND_HASH_DEFAULT)?;
+                } else {
+                    self.write_byte(VALUE_KIND_HASH)?;
+                }
 
                 let num_vars = i32::try_from(value.len())
                     .map_err(|error| Error::USizeInvalidFixnum { error })?;
@@ -227,6 +233,10 @@ where
                 for (key, value) in value.iter() {
                     self.write_value(*key)?;
                     self.write_value(*value)?;
+                }
+
+                if let Some(default_value) = default_value {
+                    self.write_value(default_value)?;
                 }
             }
             Value::Object(value) => {

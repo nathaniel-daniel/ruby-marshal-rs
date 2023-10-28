@@ -31,6 +31,7 @@ const VALUE_KIND_OBJECT_LINK: u8 = b'@';
 const VALUE_KIND_INSTANCE_VARIABLES: u8 = b'I';
 const VALUE_KIND_ARRAY: u8 = b'[';
 const VALUE_KIND_HASH: u8 = b'{';
+const VALUE_KIND_HASH_DEFAULT: u8 = b'}';
 const VALUE_KIND_OBJECT: u8 = b'o';
 const VALUE_KIND_STRING: u8 = b'"';
 
@@ -130,6 +131,7 @@ impl From<std::io::Error> for Error {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::io::Read;
 
     #[test]
     fn kitchen_sink() {
@@ -139,14 +141,19 @@ mod test {
             if file_type.is_dir() {
                 continue;
             }
+            let entry_path = entry.path();
 
-            let data = std::fs::read(entry.path()).expect("failed to read entry");
+            let data = std::fs::read(&entry_path).expect("failed to read entry");
+            let mut data_reader = std::io::Cursor::new(&data);
 
-            let value_arena = load(std::io::Cursor::new(&data)).expect("failed to load");
+            let value_arena = load(&mut data_reader).expect("failed to load");
 
             let mut new_data = Vec::new();
             dump(&mut new_data, &value_arena).expect("failed to dump");
 
+            let read_end_result = data_reader.read(&mut [0]);
+            let is_eof = matches!(read_end_result, Ok(0));
+            assert!(is_eof);
             assert!(data == new_data, "{data:?} != {new_data:?}");
         }
     }

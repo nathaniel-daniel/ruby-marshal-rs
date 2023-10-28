@@ -176,17 +176,29 @@ impl ArrayValue {
 #[derive(Debug)]
 pub struct HashValue {
     value: Vec<(ValueHandle, ValueHandle)>,
+    default_value: Option<ValueHandle>,
 }
 
 impl HashValue {
     /// Create a new [`HashValue`].
-    pub(crate) fn new(value: Vec<(ValueHandle, ValueHandle)>) -> Self {
-        Self { value }
+    pub(crate) fn new(
+        value: Vec<(ValueHandle, ValueHandle)>,
+        default_value: Option<ValueHandle>,
+    ) -> Self {
+        Self {
+            value,
+            default_value,
+        }
     }
 
     /// Get the inner value.
     pub fn value(&self) -> &[(ValueHandle, ValueHandle)] {
         &self.value
+    }
+
+    /// Get the default value.
+    pub fn default_value(&self) -> Option<ValueHandle> {
+        self.default_value
     }
 }
 
