@@ -1,6 +1,5 @@
 use crate::TypedValueHandle;
 use crate::ValueHandle;
-use indexmap::IndexMap;
 
 /// A Ruby Value
 #[derive(Debug)]
@@ -22,6 +21,9 @@ pub enum Value {
 
     /// An Array
     Array(ArrayValue),
+
+    /// An Object
+    Object(ObjectValue),
 
     /// A String
     String(StringValue),
@@ -70,6 +72,12 @@ impl From<SymbolValue> for Value {
 impl From<ArrayValue> for Value {
     fn from(value: ArrayValue) -> Self {
         Self::Array(value)
+    }
+}
+
+impl From<ObjectValue> for Value {
+    fn from(value: ObjectValue) -> Self {
+        Self::Object(value)
     }
 }
 
@@ -155,11 +163,41 @@ impl ArrayValue {
     }
 }
 
+/// An object
+#[derive(Debug)]
+pub struct ObjectValue {
+    name: TypedValueHandle<SymbolValue>,
+    instance_variables: Vec<(TypedValueHandle<SymbolValue>, ValueHandle)>,
+}
+
+impl ObjectValue {
+    /// Create a new [`ObjectValue`].
+    pub(crate) fn new(
+        name: TypedValueHandle<SymbolValue>,
+        instance_variables: Vec<(TypedValueHandle<SymbolValue>, ValueHandle)>,
+    ) -> Self {
+        Self {
+            name,
+            instance_variables,
+        }
+    }
+
+    /// Get the name.
+    pub fn name(&self) -> TypedValueHandle<SymbolValue> {
+        self.name
+    }
+
+    /// Get the instance variables
+    pub fn instance_variables(&self) -> &[(TypedValueHandle<SymbolValue>, ValueHandle)] {
+        &self.instance_variables
+    }
+}
+
 /// A String
 #[derive(Debug)]
 pub struct StringValue {
     value: Vec<u8>,
-    instance_variables: Option<IndexMap<TypedValueHandle<SymbolValue>, ValueHandle>>,
+    instance_variables: Option<Vec<(TypedValueHandle<SymbolValue>, ValueHandle)>>,
 }
 
 impl StringValue {
@@ -177,10 +215,8 @@ impl StringValue {
     }
 
     /// Get the instance variables
-    pub fn instance_variables(
-        &self,
-    ) -> Option<&IndexMap<TypedValueHandle<SymbolValue>, ValueHandle>> {
-        self.instance_variables.as_ref()
+    pub fn instance_variables(&self) -> Option<&[(TypedValueHandle<SymbolValue>, ValueHandle)]> {
+        self.instance_variables.as_deref()
     }
 
     /// Set the instance variables.
@@ -189,8 +225,8 @@ impl StringValue {
     /// Returns the old instance variables
     pub(crate) fn set_instance_variables(
         &mut self,
-        mut instance_variables: Option<IndexMap<TypedValueHandle<SymbolValue>, ValueHandle>>,
-    ) -> Option<IndexMap<TypedValueHandle<SymbolValue>, ValueHandle>> {
+        mut instance_variables: Option<Vec<(TypedValueHandle<SymbolValue>, ValueHandle)>>,
+    ) -> Option<Vec<(TypedValueHandle<SymbolValue>, ValueHandle)>> {
         std::mem::swap(&mut self.instance_variables, &mut instance_variables);
         instance_variables
     }

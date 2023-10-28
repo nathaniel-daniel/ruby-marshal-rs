@@ -11,6 +11,7 @@ use crate::VALUE_KIND_FALSE;
 use crate::VALUE_KIND_FIXNUM;
 use crate::VALUE_KIND_INSTANCE_VARIABLES;
 use crate::VALUE_KIND_NIL;
+use crate::VALUE_KIND_OBJECT;
 use crate::VALUE_KIND_OBJECT_LINK;
 use crate::VALUE_KIND_STRING;
 use crate::VALUE_KIND_SYMBOL;
@@ -124,12 +125,54 @@ where
         Ok(false)
     }
 
+    /// Write a value that is either a symbol or a symbol link.
+    fn write_value_symbol_like(
+        &mut self,
+        handle: TypedValueHandle<SymbolValue>,
+        value: &SymbolValue,
+    ) -> Result<(), Error> {
+        match self.symbol_links.get_index_of(&handle) {
+            Some(index) => {
+                let index =
+                    i32::try_from(index).map_err(|error| Error::USizeInvalidFixnum { error })?;
+
+                self.write_byte(VALUE_KIND_SYMBOL_LINK)?;
+                self.write_fixnum(index)?;
+            }
+            None => {
+                self.symbol_links.insert(handle);
+
+                self.write_byte(VALUE_KIND_SYMBOL)?;
+                self.write_byte_string(value.value())?;
+            }
+        }
+
+        Ok(())
+    }
+
     /// Write an object link, as a value.
     fn write_value_object_link(&mut self, index: usize) -> Result<(), Error> {
         let index = i32::try_from(index).map_err(|error| Error::USizeInvalidFixnum { error })?;
 
         self.write_byte(VALUE_KIND_OBJECT_LINK)?;
         self.write_fixnum(index)?;
+
+        Ok(())
+    }
+
+    /// Write instance variables
+    fn write_instance_variables(
+        &mut self,
+        instance_variables: &[(TypedValueHandle<SymbolValue>, ValueHandle)],
+    ) -> Result<(), Error> {
+        let num_vars = i32::try_from(instance_variables.len())
+            .map_err(|error| Error::USizeInvalidFixnum { error })?;
+        self.write_fixnum(num_vars)?;
+
+        for (name, value) in instance_variables.iter() {
+            self.write_value((*name).into())?;
+            self.write_value(*value)?;
+        }
 
         Ok(())
     }
@@ -142,37 +185,16 @@ where
             .ok_or(Error::InvalidValueHandle { handle })?;
 
         match value {
-            Value::Nil(_) => {
-                self.write_byte(VALUE_KIND_NIL)?;
-            }
-            Value::True(_) => {
-                self.write_byte(VALUE_KIND_TRUE)?;
-            }
-            Value::False(_) => {
-                self.write_byte(VALUE_KIND_FALSE)?;
-            }
+            Value::Nil(_) => self.write_byte(VALUE_KIND_NIL)?,
+            Value::True(_) => self.write_byte(VALUE_KIND_TRUE)?,
+            Value::False(_) => self.write_byte(VALUE_KIND_FALSE)?,
             Value::Fixnum(value) => {
                 self.write_byte(VALUE_KIND_FIXNUM)?;
                 self.write_fixnum(value.value())?;
             }
             Value::Symbol(value) => {
                 let handle = TypedValueHandle::new_unchecked(handle);
-
-                match self.symbol_links.get_index_of(&handle) {
-                    Some(index) => {
-                        let index = i32::try_from(index)
-                            .map_err(|error| Error::USizeInvalidFixnum { error })?;
-
-                        self.write_byte(VALUE_KIND_SYMBOL_LINK)?;
-                        self.write_fixnum(index)?;
-                    }
-                    None => {
-                        self.symbol_links.insert(handle);
-
-                        self.write_byte(VALUE_KIND_SYMBOL)?;
-                        self.write_byte_string(value.value())?;
-                    }
-                }
+                self.write_value_symbol_like(handle, value)?;
             }
             Value::Array(value) => {
                 if self.try_write_value_object_link(handle)? {
@@ -188,6 +210,15 @@ where
                     self.write_value(*value)?;
                 }
             }
+            Value::Object(value) => {
+                if self.try_write_value_object_link(handle)? {
+                    return Ok(());
+                }
+
+                self.write_byte(VALUE_KIND_OBJECT)?;
+                self.write_value(value.name().into())?;
+                self.write_instance_variables(value.instance_variables())?;
+            }
             Value::String(value) => {
                 if self.try_write_value_object_link(handle)? {
                     return Ok(());
@@ -200,14 +231,7 @@ where
                         self.write_byte(VALUE_KIND_STRING)?;
                         self.write_byte_string(value.value())?;
 
-                        let num_vars = i32::try_from(instance_variables.len())
-                            .map_err(|error| Error::USizeInvalidFixnum { error })?;
-                        self.write_fixnum(num_vars)?;
-
-                        for (name, value) in instance_variables.iter() {
-                            self.write_value((*name).into())?;
-                            self.write_value(*value)?;
-                        }
+                        self.write_instance_variables(instance_variables)?;
                     }
                     None => {
                         self.write_byte(VALUE_KIND_STRING)?;
