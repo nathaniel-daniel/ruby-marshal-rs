@@ -7,6 +7,7 @@ pub use self::load::load;
 pub use self::value_arena::ArrayValue;
 pub use self::value_arena::FalseValue;
 pub use self::value_arena::FixnumValue;
+pub use self::value_arena::HashValue;
 pub use self::value_arena::NilValue;
 pub use self::value_arena::ObjectValue;
 pub use self::value_arena::StringValue;
@@ -29,6 +30,7 @@ const VALUE_KIND_SYMBOL_LINK: u8 = b';';
 const VALUE_KIND_OBJECT_LINK: u8 = b'@';
 const VALUE_KIND_INSTANCE_VARIABLES: u8 = b'I';
 const VALUE_KIND_ARRAY: u8 = b'[';
+const VALUE_KIND_HASH: u8 = b'{';
 const VALUE_KIND_OBJECT: u8 = b'o';
 const VALUE_KIND_STRING: u8 = b'"';
 

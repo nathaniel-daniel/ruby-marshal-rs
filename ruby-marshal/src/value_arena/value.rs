@@ -22,6 +22,9 @@ pub enum Value {
     /// An Array
     Array(ArrayValue),
 
+    /// A hash value
+    Hash(HashValue),
+
     /// An Object
     Object(ObjectValue),
 
@@ -72,6 +75,12 @@ impl From<SymbolValue> for Value {
 impl From<ArrayValue> for Value {
     fn from(value: ArrayValue) -> Self {
         Self::Array(value)
+    }
+}
+
+impl From<HashValue> for Value {
+    fn from(value: HashValue) -> Self {
+        Self::Hash(value)
     }
 }
 
@@ -160,6 +169,24 @@ impl ArrayValue {
     /// Check if this is empty
     pub fn is_empty(&self) -> bool {
         self.value.is_empty()
+    }
+}
+
+/// A Hash
+#[derive(Debug)]
+pub struct HashValue {
+    value: Vec<(ValueHandle, ValueHandle)>,
+}
+
+impl HashValue {
+    /// Create a new [`HashValue`].
+    pub(crate) fn new(value: Vec<(ValueHandle, ValueHandle)>) -> Self {
+        Self { value }
+    }
+
+    /// Get the inner value.
+    pub fn value(&self) -> &[(ValueHandle, ValueHandle)] {
+        &self.value
     }
 }
 
