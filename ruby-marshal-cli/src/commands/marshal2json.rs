@@ -53,7 +53,7 @@ fn ruby2json_value(
         }
         ruby_marshal::Value::Hash(_value) => {
             // TODO: This is possible if the has only has string keys
-            bail!("cannot convert an Object to Json")
+            bail!("cannot convert a Hash to Json")
         }
         ruby_marshal::Value::Object(_value) => {
             bail!("cannot convert an Object to Json")
@@ -85,6 +85,9 @@ fn ruby2json_value(
                     ))
                 }
             }
+        }
+        ruby_marshal::Value::UserDefined(_value) => {
+            bail!("cannot convert an UserDefined to Json")
         }
     }
 }
