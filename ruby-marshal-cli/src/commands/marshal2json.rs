@@ -51,6 +51,9 @@ fn ruby2json_value(
 
             Ok(serde_json::Value::Array(array))
         }
+        ruby_marshal::Value::Object(value) => {
+            bail!("cannot convert an Object to Json")
+        }
         ruby_marshal::Value::String(value) => {
             let instance_variables = value.instance_variables();
             let encoding = instance_variables.and_then(|instance_variables| {
@@ -88,6 +91,7 @@ pub fn exec(options: Options) -> anyhow::Result<()> {
     let value_arena = ruby_marshal::load(&*file)
         .with_context(|| format!("failed to parse file at \"{}\"", options.input.display()))?;
 
+    // TODO: Should this conversion be lossy or lossless?
     let json_value = ruby2json_value(
         &value_arena,
         value_arena.root(),
