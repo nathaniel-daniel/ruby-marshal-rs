@@ -184,7 +184,7 @@ where
         // TODO: Consider making this a map.
         let mut instance_variables = Vec::with_capacity(num_pairs);
         for _ in 0..num_pairs {
-            let symbol = self.read_value_symbol()?;
+            let symbol = self.read_value_symbol_like()?;
             let value = self.read_value()?;
 
             instance_variables.push((symbol, value));
@@ -216,7 +216,7 @@ where
         let handle = self.arena.create_nil().into_raw();
         self.object_links.push(handle);
 
-        let name = self.read_value_symbol()?;
+        let name = self.read_value_symbol_like()?;
         let instance_variables = self.read_instance_variables()?;
 
         *self.arena.get_mut(handle).unwrap() = ObjectValue::new(name, instance_variables).into();
@@ -234,17 +234,17 @@ where
         Ok(handle)
     }
 
-    /// Read the next value, failing if it is not a symbol.
-    fn read_value_symbol(&mut self) -> Result<TypedValueHandle<SymbolValue>, Error> {
-        let value_kind = self.read_byte()?;
-        if value_kind != VALUE_KIND_SYMBOL {
-            return Err(Error::UnexpectedValueKind {
+    /// Read the next value, failing if it is not a symbol-like value.
+    fn read_value_symbol_like(&mut self) -> Result<TypedValueHandle<SymbolValue>, Error> {
+        let kind = self.read_byte()?;
+        match kind {
+            VALUE_KIND_SYMBOL => self.read_symbol(),
+            VALUE_KIND_SYMBOL_LINK => self.read_symbol_link(),
+            _ => Err(Error::UnexpectedValueKind {
                 expected: VALUE_KIND_SYMBOL,
-                actual: value_kind,
-            });
+                actual: kind,
+            }),
         }
-
-        self.read_symbol()
     }
 
     /// Read the next value.
