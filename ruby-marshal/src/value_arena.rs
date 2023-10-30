@@ -12,6 +12,7 @@ pub use self::value::SymbolValue;
 pub use self::value::TrueValue;
 pub use self::value::UserDefinedValue;
 pub use self::value::Value;
+pub use self::value::ValueKind;
 pub use self::value_handle::TypedValueHandle;
 pub use self::value_handle::ValueHandle;
 

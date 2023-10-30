@@ -20,6 +20,7 @@ pub use self::value_arena::UserDefinedValue;
 pub use self::value_arena::Value;
 pub use self::value_arena::ValueArena;
 pub use self::value_arena::ValueHandle;
+pub use self::value_arena::ValueKind;
 
 const MAJOR_VERSION: u8 = 4;
 const MINOR_VERSION: u8 = 8;
