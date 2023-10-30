@@ -43,6 +43,22 @@ impl Value {
             _ => None,
         }
     }
+
+    /// Get the kind of value.
+    pub fn kind(&self) -> ValueKind {
+        match self {
+            Self::Nil(_) => ValueKind::Nil,
+            Self::True(_) => ValueKind::True,
+            Self::False(_) => ValueKind::False,
+            Self::Fixnum(_) => ValueKind::Fixnum,
+            Self::Symbol(_) => ValueKind::Symbol,
+            Self::Array(_) => ValueKind::Array,
+            Self::Hash(_) => ValueKind::Hash,
+            Self::Object(_) => ValueKind::Object,
+            Self::String(_) => ValueKind::String,
+            Self::UserDefined(_) => ValueKind::UserDefined,
+        }
+    }
 }
 
 impl From<NilValue> for Value {
@@ -324,4 +340,19 @@ impl UserDefinedValue {
         std::mem::swap(&mut self.instance_variables, &mut instance_variables);
         instance_variables
     }
+}
+
+/// The kind of value
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub enum ValueKind {
+    Nil,
+    True,
+    False,
+    Fixnum,
+    Symbol,
+    Array,
+    Hash,
+    Object,
+    String,
+    UserDefined,
 }
