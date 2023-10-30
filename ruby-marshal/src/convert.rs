@@ -1,5 +1,6 @@
 use crate::Error;
 use crate::NilValue;
+use crate::SymbolValue;
 use crate::Value;
 use crate::ValueArena;
 use crate::ValueHandle;
@@ -37,6 +38,8 @@ impl std::fmt::Display for FromValueError {
         }
     }
 }
+
+impl std::error::Error for FromValueError {}
 
 /// Implemented for any type that can be created from a Ruby Value.
 pub trait FromValue<'a>: Sized {
@@ -83,6 +86,20 @@ impl<'a> FromValue<'a> for &'a NilValue {
     }
 }
 
+impl<'a> FromValue<'a> for &'a SymbolValue {
+    fn from_value(
+        arena: &'a ValueArena,
+        handle: ValueHandle,
+        visited: &mut HashSet<ValueHandle>,
+    ) -> Result<Self, FromValueError> {
+        let value: &Value = FromValue::from_value(arena, handle, visited)?;
+        match value {
+            Value::Symbol(value) => Ok(value),
+            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
+        }
+    }
+}
+
 /// Implemented for any type that can be converted into a Ruby Value.
 pub trait IntoValue: Sized {
     /// Turn this type into a Ruby Value.
@@ -95,7 +112,8 @@ mod test {
 
     #[test]
     fn sanity() {
-        let arena = ValueArena::new();
+        let mut arena = ValueArena::new();
+        let symbol_handle = arena.create_symbol("symbol".into());
         let mut visited = HashSet::new();
 
         let _value: &Value = <&Value>::from_value(&arena, arena.root(), &mut visited)
@@ -104,5 +122,10 @@ mod test {
         visited.clear();
         let _nil_value: &NilValue = <&NilValue>::from_value(&arena, arena.root(), &mut visited)
             .expect("failed exec &NilValue::from_value");
+
+        visited.clear();
+        let _symbol_value: &SymbolValue =
+            <&SymbolValue>::from_value(&arena, symbol_handle.into(), &mut visited)
+                .expect("failed exec &NilValue::from_value");
     }
 }
