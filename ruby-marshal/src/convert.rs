@@ -100,6 +100,25 @@ impl<'a> FromValue<'a> for &'a SymbolValue {
     }
 }
 
+impl<'a, T> FromValue<'a> for Option<T>
+where
+    T: FromValue<'a>,
+{
+    fn from_value(
+        arena: &'a ValueArena,
+        handle: ValueHandle,
+        visited: &mut HashSet<ValueHandle>,
+    ) -> Result<Self, FromValueError> {
+        let value: &Value = FromValue::from_value(arena, handle, visited)?;
+        visited.remove(&handle);
+
+        match value {
+            Value::Nil(_) => Ok(None),
+            _ => T::from_value(arena, handle, visited).map(Some),
+        }
+    }
+}
+
 /// Implemented for any type that can be converted into a Ruby Value.
 pub trait IntoValue: Sized {
     /// Turn this type into a Ruby Value.
@@ -113,19 +132,28 @@ mod test {
     #[test]
     fn sanity() {
         let mut arena = ValueArena::new();
-        let symbol_handle = arena.create_symbol("symbol".into());
+        let nil_handle = arena.create_nil().into_raw();
+        let symbol_handle = arena.create_symbol("symbol".into()).into_raw();
         let mut visited = HashSet::new();
 
-        let _value: &Value = <&Value>::from_value(&arena, arena.root(), &mut visited)
+        let _value: &Value = <&Value>::from_value(&arena, nil_handle, &mut visited)
             .expect("failed to exec &Value::from_value");
 
         visited.clear();
-        let _nil_value: &NilValue = <&NilValue>::from_value(&arena, arena.root(), &mut visited)
+        let _nil_value: &NilValue = <&NilValue>::from_value(&arena, nil_handle, &mut visited)
             .expect("failed exec &NilValue::from_value");
 
         visited.clear();
         let _symbol_value: &SymbolValue =
-            <&SymbolValue>::from_value(&arena, symbol_handle.into(), &mut visited)
-                .expect("failed exec &NilValue::from_value");
+            <&SymbolValue>::from_value(&arena, symbol_handle, &mut visited)
+                .expect("failed exec &SymbolValue::from_value");
+
+        visited.clear();
+        let _some_symbol_value: Option<&SymbolValue> =
+            <Option<&SymbolValue>>::from_value(&arena, symbol_handle, &mut visited)
+                .expect("failed exec Option<&SymbolValue>::from_value");
+        let _none_symbol_value: Option<&SymbolValue> =
+            <Option<&SymbolValue>>::from_value(&arena, nil_handle, &mut visited)
+                .expect("failed exec Option<&SymbolValue>::from_value");
     }
 }
