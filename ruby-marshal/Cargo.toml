@@ -6,4 +6,4 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 generational-arena = "0.2.9"
-indexmap = "2.0.2"
+indexmap = "2.1.0"
