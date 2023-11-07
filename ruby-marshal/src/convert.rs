@@ -1,6 +1,7 @@
 use crate::Error;
 use crate::FixnumValue;
 use crate::NilValue;
+use crate::StringValue;
 use crate::SymbolValue;
 use crate::Value;
 use crate::ValueArena;
@@ -101,6 +102,20 @@ impl<'a> FromValue<'a> for &'a FixnumValue {
     }
 }
 
+impl<'a> FromValue<'a> for &'a StringValue {
+    fn from_value(
+        arena: &'a ValueArena,
+        handle: ValueHandle,
+        visited: &mut HashSet<ValueHandle>,
+    ) -> Result<Self, FromValueError> {
+        let value: &Value = FromValue::from_value(arena, handle, visited)?;
+        match value {
+            Value::String(value) => Ok(value),
+            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
+        }
+    }
+}
+
 impl<'a> FromValue<'a> for &'a SymbolValue {
     fn from_value(
         arena: &'a ValueArena,
@@ -161,6 +176,7 @@ mod test {
         let nil_handle = arena.create_nil().into_raw();
         let fixnum_handle = arena.create_fixnum(23).into_raw();
         let symbol_handle = arena.create_symbol("symbol".into()).into_raw();
+        let string_handle = arena.create_string("string".into()).into_raw();
         let mut visited = HashSet::new();
 
         let _value: &Value = <&Value>::from_value(&arena, nil_handle, &mut visited)
@@ -179,6 +195,11 @@ mod test {
         let _symbol_value: &SymbolValue =
             <&SymbolValue>::from_value(&arena, symbol_handle, &mut visited)
                 .expect("failed exec &SymbolValue::from_value");
+
+        visited.clear();
+        let _string_value: &StringValue =
+            <&StringValue>::from_value(&arena, string_handle, &mut visited)
+                .expect("failed exec &StringValue::from_value");
 
         visited.clear();
         let _i32_value: i32 = <i32>::from_value(&arena, fixnum_handle, &mut visited)
