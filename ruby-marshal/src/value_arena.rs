@@ -114,6 +114,14 @@ impl ValueArena {
         TypedValueHandle::new_unchecked(handle)
     }
 
+    /// Create an orphan `Array` value and return the handle.
+    pub fn create_array(&mut self, value: Vec<ValueHandle>) -> TypedValueHandle<ArrayValue> {
+        let index = self.arena.insert(Value::Array(ArrayValue::new(value)));
+        let handle = ValueHandle::new(index);
+
+        TypedValueHandle::new_unchecked(handle)
+    }
+
     /// Create an orphan `Hash` value and return the handle.
     pub fn create_hash(
         &mut self,
