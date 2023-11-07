@@ -4,6 +4,7 @@ mod load;
 mod value_arena;
 
 pub use self::convert::FromValue;
+pub use self::convert::FromValueError;
 pub use self::dump::dump;
 pub use self::load::load;
 pub use self::value_arena::ArrayValue;
