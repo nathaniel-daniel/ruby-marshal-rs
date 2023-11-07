@@ -29,6 +29,11 @@ pub enum FromValueError {
         /// The unexpected value kind
         kind: ValueKind,
     },
+
+    /// Another user-provided kind of error occured.
+    Other {
+        error: Box<dyn std::error::Error + Send + Sync + 'static>,
+    },
 }
 
 impl std::fmt::Display for FromValueError {
@@ -37,11 +42,19 @@ impl std::fmt::Display for FromValueError {
             Self::Cycle { .. } => write!(f, "attempted to extract recursively"),
             Self::InvalidValueHandle { .. } => write!(f, "a handle was invalid"),
             Self::UnexpectedValueKind { kind } => write!(f, "unexpected value kind {kind:?}"),
+            Self::Other { .. } => write!(f, "an user-provided error was encountered"),
         }
     }
 }
 
-impl std::error::Error for FromValueError {}
+impl std::error::Error for FromValueError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Other { error } => Some(&**error),
+            _ => None,
+        }
+    }
+}
 
 /// Implemented for any type that can be created from a Ruby Value.
 pub trait FromValue<'a>: Sized {
