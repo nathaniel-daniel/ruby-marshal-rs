@@ -1,5 +1,4 @@
 use crate::ArrayValue;
-use crate::Error;
 use crate::FixnumValue;
 use crate::NilValue;
 use crate::StringValue;
@@ -188,10 +187,36 @@ where
     }
 }
 
+/// An error that may occur while transforming types into Ruby Values.
+#[derive(Debug)]
+pub enum IntoValueError {
+    /// Another user-provided kind of error occured.
+    Other {
+        error: Box<dyn std::error::Error + Send + Sync + 'static>,
+    },
+}
+
+impl std::fmt::Display for IntoValueError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Other { .. } => write!(f, "an user-provided error was encountered"),
+        }
+    }
+}
+
+impl std::error::Error for IntoValueError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Other { error } => Some(&**error),
+            // _ => None,
+        }
+    }
+}
+
 /// Implemented for any type that can be converted into a Ruby Value.
 pub trait IntoValue: Sized {
     /// Turn this type into a Ruby Value.
-    fn into_value(self, arena: &mut ValueArena) -> Result<ValueHandle, Error>;
+    fn into_value(self, arena: &mut ValueArena) -> Result<ValueHandle, IntoValueError>;
 }
 
 #[cfg(test)]
