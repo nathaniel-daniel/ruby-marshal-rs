@@ -219,6 +219,12 @@ pub trait IntoValue: Sized {
     fn into_value(self, arena: &mut ValueArena) -> Result<ValueHandle, IntoValueError>;
 }
 
+impl IntoValue for i32 {
+    fn into_value(self, arena: &mut ValueArena) -> Result<ValueHandle, IntoValueError> {
+        Ok(arena.create_fixnum(self).into())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -271,5 +277,9 @@ mod test {
         let _none_symbol_value: Option<&SymbolValue> =
             <Option<&SymbolValue>>::from_value(&arena, nil_handle, &mut visited)
                 .expect("failed exec Option<&SymbolValue>::from_value");
+
+        0_i32
+            .into_value(&mut arena)
+            .expect("failed to exec i32::into_value");
     }
 }
