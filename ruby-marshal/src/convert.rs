@@ -53,6 +53,18 @@ pub enum FromValueError {
     },
 }
 
+impl FromValueError {
+    /// Shorthand for creating a new `Other` error variant.
+    pub fn new_other<E>(error: E) -> Self
+    where
+        E: Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
+    {
+        Self::Other {
+            error: error.into(),
+        }
+    }
+}
+
 impl std::fmt::Display for FromValueError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
