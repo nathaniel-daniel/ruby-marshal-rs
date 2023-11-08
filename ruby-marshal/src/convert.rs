@@ -81,21 +81,48 @@ impl FromValueError {
     }
 }
 
+#[derive(Debug)]
+struct DisplayByteString<'a>(&'a [u8]);
+
+impl<'a> std::fmt::Display for DisplayByteString<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let string = self.0;
+        match std::str::from_utf8(string) {
+            Ok(string) => write!(f, "{string}"),
+            Err(_error) => write!(f, "{string:?}"),
+        }
+    }
+}
+
 impl std::fmt::Display for FromValueError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Cycle { .. } => write!(f, "attempted to extract recursively"),
             Self::InvalidValueHandle { .. } => write!(f, "a handle was invalid"),
             Self::UnexpectedValueKind { kind } => write!(f, "unexpected value kind {kind:?}"),
-            Self::UnexpectedObjectName { name } => write!(f, "unexpected object name \"{name:?}\""),
+            Self::UnexpectedObjectName { name } => {
+                write!(f, "unexpected object name \"{}\"", DisplayByteString(name))
+            }
             Self::DuplicateInstanceVariable { name } => {
-                write!(f, "instance variable \"{name:?}\" was encountered twice")
+                write!(
+                    f,
+                    "instance variable \"{}\" was encountered twice",
+                    DisplayByteString(name)
+                )
             }
             Self::UnknownInstanceVariable { name } => {
-                write!(f, "instance variable \"{name:?}\" is not known")
+                write!(
+                    f,
+                    "instance variable \"{}\" is not known",
+                    DisplayByteString(name)
+                )
             }
             Self::MissingInstanceVariable { name } => {
-                write!(f, "instance variable \"{name:?}\" is missing")
+                write!(
+                    f,
+                    "instance variable \"{}\" is missing",
+                    DisplayByteString(name)
+                )
             }
             Self::Other { .. } => write!(f, "an user-provided error was encountered"),
         }
