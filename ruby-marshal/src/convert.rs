@@ -39,6 +39,14 @@ pub enum FromValueError {
         name: Vec<u8>,
     },
 
+    /// An instance variable was duplicated
+    DuplicateInstanceVariable {
+        /// The instance variable name.
+        ///
+        /// This may or may not be UTF-8.
+        name: Vec<u8>,
+    },
+
     /// Another user-provided kind of error occured.
     Other {
         error: Box<dyn std::error::Error + Send + Sync + 'static>,
@@ -52,6 +60,9 @@ impl std::fmt::Display for FromValueError {
             Self::InvalidValueHandle { .. } => write!(f, "a handle was invalid"),
             Self::UnexpectedValueKind { kind } => write!(f, "unexpected value kind {kind:?}"),
             Self::UnexpectedObjectName { name } => write!(f, "unexpected object name \"{name:?}\""),
+            Self::DuplicateInstanceVariable { name } => {
+                write!(f, "instance variable \"{name:?}\" was encountered twice")
+            }
             Self::Other { .. } => write!(f, "an user-provided error was encountered"),
         }
     }
