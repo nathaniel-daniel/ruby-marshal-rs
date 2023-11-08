@@ -55,6 +55,14 @@ pub enum FromValueError {
         name: Vec<u8>,
     },
 
+    /// Missing an instance variable with the given name.
+    MissingInstanceVariable {
+        /// The instance variable name.
+        ///
+        /// This may or may not be UTF-8.
+        name: Vec<u8>,
+    },
+
     /// Another user-provided kind of error occured.
     Other {
         error: Box<dyn std::error::Error + Send + Sync + 'static>,
@@ -85,6 +93,9 @@ impl std::fmt::Display for FromValueError {
             }
             Self::UnknownInstanceVariable { name } => {
                 write!(f, "instance variable \"{name:?}\" is not known")
+            }
+            Self::MissingInstanceVariable { name } => {
+                write!(f, "instance variable \"{name:?}\" is missing")
             }
             Self::Other { .. } => write!(f, "an user-provided error was encountered"),
         }
