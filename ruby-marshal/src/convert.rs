@@ -31,6 +31,14 @@ pub enum FromValueError {
         kind: ValueKind,
     },
 
+    /// An object name was unexpected
+    UnexpectedObjectName {
+        /// The object name.
+        ///
+        /// This may or may not be UTF-8.
+        name: Vec<u8>,
+    },
+
     /// Another user-provided kind of error occured.
     Other {
         error: Box<dyn std::error::Error + Send + Sync + 'static>,
@@ -43,6 +51,7 @@ impl std::fmt::Display for FromValueError {
             Self::Cycle { .. } => write!(f, "attempted to extract recursively"),
             Self::InvalidValueHandle { .. } => write!(f, "a handle was invalid"),
             Self::UnexpectedValueKind { kind } => write!(f, "unexpected value kind {kind:?}"),
+            Self::UnexpectedObjectName { name } => write!(f, "unexpected object name \"{name:?}\""),
             Self::Other { .. } => write!(f, "an user-provided error was encountered"),
         }
     }
