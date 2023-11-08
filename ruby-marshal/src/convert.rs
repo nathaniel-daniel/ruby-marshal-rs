@@ -1,6 +1,7 @@
 use crate::ArrayValue;
 use crate::FixnumValue;
 use crate::NilValue;
+use crate::ObjectValue;
 use crate::StringValue;
 use crate::SymbolValue;
 use crate::Value;
@@ -115,20 +116,6 @@ impl<'a> FromValue<'a> for &'a FixnumValue {
     }
 }
 
-impl<'a> FromValue<'a> for &'a StringValue {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &Value = FromValue::from_value(arena, handle, visited)?;
-        match value {
-            Value::String(value) => Ok(value),
-            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
-        }
-    }
-}
-
 impl<'a> FromValue<'a> for &'a SymbolValue {
     fn from_value(
         arena: &'a ValueArena,
@@ -152,6 +139,34 @@ impl<'a> FromValue<'a> for &'a ArrayValue {
         let value: &Value = FromValue::from_value(arena, handle, visited)?;
         match value {
             Value::Array(value) => Ok(value),
+            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
+        }
+    }
+}
+
+impl<'a> FromValue<'a> for &'a ObjectValue {
+    fn from_value(
+        arena: &'a ValueArena,
+        handle: ValueHandle,
+        visited: &mut HashSet<ValueHandle>,
+    ) -> Result<Self, FromValueError> {
+        let value: &Value = FromValue::from_value(arena, handle, visited)?;
+        match value {
+            Value::Object(value) => Ok(value),
+            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
+        }
+    }
+}
+
+impl<'a> FromValue<'a> for &'a StringValue {
+    fn from_value(
+        arena: &'a ValueArena,
+        handle: ValueHandle,
+        visited: &mut HashSet<ValueHandle>,
+    ) -> Result<Self, FromValueError> {
+        let value: &Value = FromValue::from_value(arena, handle, visited)?;
+        match value {
+            Value::String(value) => Ok(value),
             value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
         }
     }
@@ -232,11 +247,16 @@ mod test {
     #[test]
     fn sanity() {
         let mut arena = ValueArena::new();
+
         let nil_handle = arena.create_nil().into_raw();
         let fixnum_handle = arena.create_fixnum(23).into_raw();
-        let symbol_handle = arena.create_symbol("symbol".into()).into_raw();
+        let symbol_handle = arena.create_symbol("symbol".into());
         let array_handle = arena.create_array(Vec::new()).into_raw();
+        let object_handle = arena.create_object(symbol_handle, Vec::new()).into_raw();
         let string_handle = arena.create_string("string".into()).into_raw();
+
+        let symbol_handle = symbol_handle.into_raw();
+
         let mut visited = HashSet::new();
 
         let _value: &Value = <&Value>::from_value(&arena, nil_handle, &mut visited)
@@ -260,6 +280,11 @@ mod test {
         let _array_value: &ArrayValue =
             <&ArrayValue>::from_value(&arena, array_handle, &mut visited)
                 .expect("failed exec &ArrayValue::from_value");
+
+        visited.clear();
+        let _string_value: &ObjectValue =
+            <&ObjectValue>::from_value(&arena, object_handle, &mut visited)
+                .expect("failed exec &ObjectValue::from_value");
 
         visited.clear();
         let _string_value: &StringValue =
