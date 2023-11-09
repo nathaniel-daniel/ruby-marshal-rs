@@ -2,14 +2,13 @@ mod value;
 mod value_handle;
 
 pub use self::value::ArrayValue;
-pub use self::value::FalseValue;
+pub use self::value::BoolValue;
 pub use self::value::FixnumValue;
 pub use self::value::HashValue;
 pub use self::value::NilValue;
 pub use self::value::ObjectValue;
 pub use self::value::StringValue;
 pub use self::value::SymbolValue;
-pub use self::value::TrueValue;
 pub use self::value::UserDefinedValue;
 pub use self::value::Value;
 pub use self::value::ValueKind;
@@ -82,17 +81,9 @@ impl ValueArena {
         TypedValueHandle::new_unchecked(handle)
     }
 
-    /// Create an orphan `True` value and return the handle.
-    pub fn create_true(&mut self) -> TypedValueHandle<TrueValue> {
-        let index = self.arena.insert(Value::True(TrueValue));
-        let handle = ValueHandle::new(index);
-
-        TypedValueHandle::new_unchecked(handle)
-    }
-
-    /// Create an orphan `True` value and return the handle.
-    pub fn create_false(&mut self) -> TypedValueHandle<FalseValue> {
-        let index = self.arena.insert(Value::False(FalseValue));
+    /// Create an orphan `Bool` value and return the handle.
+    pub fn create_bool(&mut self, value: bool) -> TypedValueHandle<BoolValue> {
+        let index = self.arena.insert(Value::Bool(BoolValue::new(value)));
         let handle = ValueHandle::new(index);
 
         TypedValueHandle::new_unchecked(handle)

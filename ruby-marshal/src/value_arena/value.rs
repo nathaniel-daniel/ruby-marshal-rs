@@ -7,11 +7,8 @@ pub enum Value {
     /// Nil
     Nil(NilValue),
 
-    /// True
-    True(TrueValue),
-
-    /// False
-    False(FalseValue),
+    /// A Bool
+    Bool(BoolValue),
 
     /// A Fixnum
     Fixnum(FixnumValue),
@@ -48,8 +45,7 @@ impl Value {
     pub fn kind(&self) -> ValueKind {
         match self {
             Self::Nil(_) => ValueKind::Nil,
-            Self::True(_) => ValueKind::True,
-            Self::False(_) => ValueKind::False,
+            Self::Bool(_) => ValueKind::Bool,
             Self::Fixnum(_) => ValueKind::Fixnum,
             Self::Symbol(_) => ValueKind::Symbol,
             Self::Array(_) => ValueKind::Array,
@@ -67,15 +63,9 @@ impl From<NilValue> for Value {
     }
 }
 
-impl From<TrueValue> for Value {
-    fn from(value: TrueValue) -> Self {
-        Self::True(value)
-    }
-}
-
-impl From<FalseValue> for Value {
-    fn from(value: FalseValue) -> Self {
-        Self::False(value)
+impl From<BoolValue> for Value {
+    fn from(value: BoolValue) -> Self {
+        Self::Bool(value)
     }
 }
 
@@ -125,13 +115,23 @@ impl From<UserDefinedValue> for Value {
 #[derive(Debug)]
 pub struct NilValue;
 
-/// A true value.
-#[derive(Debug)]
-pub struct TrueValue;
+/// A bool value.
+#[derive(Debug, Copy, Clone)]
+pub struct BoolValue {
+    value: bool,
+}
 
-/// A false value.
-#[derive(Debug)]
-pub struct FalseValue;
+impl BoolValue {
+    /// Create a new [`BoolValue`].
+    pub(super) fn new(value: bool) -> Self {
+        Self { value }
+    }
+
+    /// Get the inner value
+    pub fn value(self) -> bool {
+        self.value
+    }
+}
 
 /// A Fixnum Value
 #[derive(Debug, Copy, Clone)]
@@ -346,8 +346,7 @@ impl UserDefinedValue {
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum ValueKind {
     Nil,
-    True,
-    False,
+    Bool,
     Fixnum,
     Symbol,
     Array,
