@@ -1,4 +1,5 @@
 use crate::ArrayValue;
+use crate::BoolValue;
 use crate::FixnumValue;
 use crate::NilValue;
 use crate::ObjectValue;
@@ -183,6 +184,20 @@ impl<'a> FromValue<'a> for &'a NilValue {
     }
 }
 
+impl<'a> FromValue<'a> for &'a BoolValue {
+    fn from_value(
+        arena: &'a ValueArena,
+        handle: ValueHandle,
+        visited: &mut HashSet<ValueHandle>,
+    ) -> Result<Self, FromValueError> {
+        let value: &Value = FromValue::from_value(arena, handle, visited)?;
+        match value {
+            Value::Bool(value) => Ok(value),
+            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
+        }
+    }
+}
+
 impl<'a> FromValue<'a> for &'a FixnumValue {
     fn from_value(
         arena: &'a ValueArena,
@@ -250,6 +265,16 @@ impl<'a> FromValue<'a> for &'a StringValue {
             Value::String(value) => Ok(value),
             value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
         }
+    }
+}
+impl<'a> FromValue<'a> for bool {
+    fn from_value(
+        arena: &'a ValueArena,
+        handle: ValueHandle,
+        visited: &mut HashSet<ValueHandle>,
+    ) -> Result<Self, FromValueError> {
+        let value: &BoolValue = FromValue::from_value(arena, handle, visited)?;
+        Ok(value.value())
     }
 }
 
@@ -330,6 +355,7 @@ mod test {
         let mut arena = ValueArena::new();
 
         let nil_handle = arena.create_nil().into_raw();
+        let bool_handle = arena.create_bool(true).into_raw();
         let fixnum_handle = arena.create_fixnum(23).into_raw();
         let symbol_handle = arena.create_symbol("symbol".into());
         let array_handle = arena.create_array(Vec::new()).into_raw();
@@ -346,6 +372,10 @@ mod test {
         visited.clear();
         let _nil_value: &NilValue = <&NilValue>::from_value(&arena, nil_handle, &mut visited)
             .expect("failed exec &NilValue::from_value");
+
+        visited.clear();
+        let _bool_value: &BoolValue = <&BoolValue>::from_value(&arena, bool_handle, &mut visited)
+            .expect("failed exec &BoolValue::from_value");
 
         visited.clear();
         let _fixnum_value: &FixnumValue =
@@ -371,6 +401,10 @@ mod test {
         let _string_value: &StringValue =
             <&StringValue>::from_value(&arena, string_handle, &mut visited)
                 .expect("failed exec &StringValue::from_value");
+
+        visited.clear();
+        let _bool_value: bool = <bool>::from_value(&arena, bool_handle, &mut visited)
+            .expect("failed exec bool::from_value");
 
         visited.clear();
         let _i32_value: i32 = <i32>::from_value(&arena, fixnum_handle, &mut visited)
