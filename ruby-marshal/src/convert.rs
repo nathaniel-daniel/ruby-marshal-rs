@@ -308,6 +308,27 @@ where
     }
 }
 
+impl<'a, T> FromValue<'a> for Vec<T>
+where
+    T: FromValue<'a>,
+{
+    fn from_value(
+        arena: &'a ValueArena,
+        handle: ValueHandle,
+        visited: &mut HashSet<ValueHandle>,
+    ) -> Result<Self, FromValueError> {
+        let array: &ArrayValue = FromValue::from_value(arena, handle, visited)?;
+        let array = array.value();
+
+        let mut vec = Vec::with_capacity(array.len());
+        for handle in array.iter().copied() {
+            vec.push(FromValue::from_value(arena, handle, visited)?);
+        }
+
+        Ok(vec)
+    }
+}
+
 /// An error that may occur while transforming types into Ruby Values.
 #[derive(Debug)]
 pub enum IntoValueError {
@@ -377,7 +398,7 @@ mod test {
         let bool_handle = arena.create_bool(true).into_raw();
         let fixnum_handle = arena.create_fixnum(23).into_raw();
         let symbol_handle = arena.create_symbol("symbol".into());
-        let array_handle = arena.create_array(Vec::new()).into_raw();
+        let array_handle = arena.create_array(vec![fixnum_handle]).into_raw();
         let object_handle = arena.create_object(symbol_handle, Vec::new()).into_raw();
         let string_handle = arena.create_string("string".into()).into_raw();
 
@@ -436,6 +457,9 @@ mod test {
         let _none_symbol_value: Option<&SymbolValue> =
             <Option<&SymbolValue>>::from_value(&arena, nil_handle, &mut visited)
                 .expect("failed exec Option<&SymbolValue>::from_value");
+
+        let _vec_value: Vec<i32> = <Vec<i32>>::from_value(&arena, array_handle, &mut visited)
+            .expect("failed exec <Vec<i32>>::from_value");
 
         true.into_value(&mut arena)
             .expect("failed to exec bool::into_value");
