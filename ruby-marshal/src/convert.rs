@@ -320,7 +320,7 @@ pub enum IntoValueError {
 impl std::fmt::Display for IntoValueError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Other { .. } => write!(f, "an user-provided error was encountered"),
+            Self::Other { .. } => write!(f, "a user-provided error was encountered"),
         }
     }
 }
@@ -338,6 +338,12 @@ impl std::error::Error for IntoValueError {
 pub trait IntoValue: Sized {
     /// Turn this type into a Ruby Value.
     fn into_value(self, arena: &mut ValueArena) -> Result<ValueHandle, IntoValueError>;
+}
+
+impl IntoValue for bool {
+    fn into_value(self, arena: &mut ValueArena) -> Result<ValueHandle, IntoValueError> {
+        Ok(arena.create_bool(self).into())
+    }
 }
 
 impl IntoValue for i32 {
@@ -417,6 +423,9 @@ mod test {
         let _none_symbol_value: Option<&SymbolValue> =
             <Option<&SymbolValue>>::from_value(&arena, nil_handle, &mut visited)
                 .expect("failed exec Option<&SymbolValue>::from_value");
+
+        true.into_value(&mut arena)
+            .expect("failed to exec bool::into_value");
 
         0_i32
             .into_value(&mut arena)
