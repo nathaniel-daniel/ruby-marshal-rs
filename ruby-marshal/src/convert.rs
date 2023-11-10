@@ -352,6 +352,19 @@ impl IntoValue for i32 {
     }
 }
 
+impl<T> IntoValue for Vec<T>
+where
+    T: IntoValue,
+{
+    fn into_value(self, arena: &mut ValueArena) -> Result<ValueHandle, IntoValueError> {
+        let mut array = Vec::with_capacity(self.len());
+        for item in self.into_iter() {
+            array.push(item.into_value(arena)?);
+        }
+        Ok(arena.create_array(array).into())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -430,5 +443,8 @@ mod test {
         0_i32
             .into_value(&mut arena)
             .expect("failed to exec i32::into_value");
+        vec![0, 1, 2]
+            .into_value(&mut arena)
+            .expect("failed to exec Vec::<i32>::into_value");
     }
 }
