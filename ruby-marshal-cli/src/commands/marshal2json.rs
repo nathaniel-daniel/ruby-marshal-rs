@@ -37,8 +37,7 @@ fn ruby2json_value(
     let value = arena.get(handle).context("missing handle")?;
     match value {
         ruby_marshal::Value::Nil(_) => Ok(serde_json::Value::Null),
-        ruby_marshal::Value::False(_) => Ok(serde_json::Value::Bool(false)),
-        ruby_marshal::Value::True(_) => Ok(serde_json::Value::Bool(true)),
+        ruby_marshal::Value::Bool(value) => Ok(serde_json::Value::Bool(value.value())),
         ruby_marshal::Value::Symbol(_value) => bail!("cannot convert a Symbol to Json"),
         ruby_marshal::Value::Fixnum(value) => Ok(serde_json::Value::Number(value.value().into())),
         ruby_marshal::Value::Array(value) => {

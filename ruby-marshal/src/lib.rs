@@ -1,23 +1,28 @@
+mod convert;
 mod dump;
 mod load;
 mod value_arena;
 
+pub use self::convert::FromValue;
+pub use self::convert::FromValueError;
+pub use self::convert::IntoValue;
+pub use self::convert::IntoValueError;
 pub use self::dump::dump;
 pub use self::load::load;
 pub use self::value_arena::ArrayValue;
-pub use self::value_arena::FalseValue;
+pub use self::value_arena::BoolValue;
 pub use self::value_arena::FixnumValue;
 pub use self::value_arena::HashValue;
 pub use self::value_arena::NilValue;
 pub use self::value_arena::ObjectValue;
 pub use self::value_arena::StringValue;
 pub use self::value_arena::SymbolValue;
-pub use self::value_arena::TrueValue;
 pub use self::value_arena::TypedValueHandle;
 pub use self::value_arena::UserDefinedValue;
 pub use self::value_arena::Value;
 pub use self::value_arena::ValueArena;
 pub use self::value_arena::ValueHandle;
+pub use self::value_arena::ValueKind;
 
 const MAJOR_VERSION: u8 = 4;
 const MINOR_VERSION: u8 = 8;

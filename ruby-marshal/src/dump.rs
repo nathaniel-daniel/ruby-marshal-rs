@@ -189,8 +189,13 @@ where
 
         match value {
             Value::Nil(_) => self.write_byte(VALUE_KIND_NIL)?,
-            Value::True(_) => self.write_byte(VALUE_KIND_TRUE)?,
-            Value::False(_) => self.write_byte(VALUE_KIND_FALSE)?,
+            Value::Bool(value) => {
+                if value.value() {
+                    self.write_byte(VALUE_KIND_TRUE)?
+                } else {
+                    self.write_byte(VALUE_KIND_FALSE)?
+                }
+            }
             Value::Fixnum(value) => {
                 self.write_byte(VALUE_KIND_FIXNUM)?;
                 self.write_fixnum(value.value())?;
