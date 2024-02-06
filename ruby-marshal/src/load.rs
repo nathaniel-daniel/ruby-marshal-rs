@@ -294,8 +294,8 @@ where
         let kind = self.read_byte()?;
         match kind {
             VALUE_KIND_NIL => Ok(self.arena.create_nil().into()),
-            VALUE_KIND_TRUE => Ok(self.arena.create_true().into()),
-            VALUE_KIND_FALSE => Ok(self.arena.create_false().into()),
+            VALUE_KIND_TRUE => Ok(self.arena.create_bool(true).into()),
+            VALUE_KIND_FALSE => Ok(self.arena.create_bool(false).into()),
             VALUE_KIND_FIXNUM => Ok(self.read_fixnum()?.into()),
             VALUE_KIND_SYMBOL => Ok(self.read_symbol()?.into()),
             VALUE_KIND_SYMBOL_LINK => Ok(self.read_symbol_link()?.into()),
