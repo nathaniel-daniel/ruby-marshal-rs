@@ -384,6 +384,18 @@ pub enum IntoValueError {
     },
 }
 
+impl IntoValueError {
+    /// Shorthand for creating a new `Other` error variant.
+    pub fn new_other<E>(error: E) -> Self
+    where
+        E: Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
+    {
+        Self::Other {
+            error: error.into(),
+        }
+    }
+}
+
 impl std::fmt::Display for IntoValueError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -445,8 +457,12 @@ mod test {
         let fixnum_handle = arena.create_fixnum(23).into_raw();
         let symbol_handle = arena.create_symbol("symbol".into());
         let array_handle = arena.create_array(vec![fixnum_handle]).into_raw();
+        let hash_handle = arena.create_hash(Vec::new(), None).into_raw();
         let object_handle = arena.create_object(symbol_handle, Vec::new()).into_raw();
         let string_handle = arena.create_string("string".into()).into_raw();
+        let user_defined_handle = arena
+            .create_user_defined(symbol_handle, Vec::new())
+            .into_raw();
 
         let symbol_handle = symbol_handle.into_raw();
 
@@ -479,6 +495,10 @@ mod test {
                 .expect("failed exec &ArrayValue::from_value");
 
         visited.clear();
+        let _hash_value: &HashValue = <&HashValue>::from_value(&arena, hash_handle, &mut visited)
+            .expect("failed exec &HashValue::from_value");
+
+        visited.clear();
         let _string_value: &ObjectValue =
             <&ObjectValue>::from_value(&arena, object_handle, &mut visited)
                 .expect("failed exec &ObjectValue::from_value");
@@ -487,6 +507,11 @@ mod test {
         let _string_value: &StringValue =
             <&StringValue>::from_value(&arena, string_handle, &mut visited)
                 .expect("failed exec &StringValue::from_value");
+
+        visited.clear();
+        let _user_defined_value: &UserDefinedValue =
+            <&UserDefinedValue>::from_value(&arena, user_defined_handle, &mut visited)
+                .expect("failed exec &UserDefinedValue::from_value");
 
         visited.clear();
         let _bool_value: bool = <bool>::from_value(&arena, bool_handle, &mut visited)
