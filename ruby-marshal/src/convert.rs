@@ -5,6 +5,7 @@ use crate::NilValue;
 use crate::ObjectValue;
 use crate::StringValue;
 use crate::SymbolValue;
+use crate::UserDefinedValue;
 use crate::Value;
 use crate::ValueArena;
 use crate::ValueHandle;
@@ -282,6 +283,21 @@ impl<'a> FromValue<'a> for &'a StringValue {
         }
     }
 }
+
+impl<'a> FromValue<'a> for &'a UserDefinedValue {
+    fn from_value(
+        arena: &'a ValueArena,
+        handle: ValueHandle,
+        visited: &mut HashSet<ValueHandle>,
+    ) -> Result<Self, FromValueError> {
+        let value: &Value = FromValue::from_value(arena, handle, visited)?;
+        match value {
+            Value::UserDefined(value) => Ok(value),
+            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
+        }
+    }
+}
+
 impl<'a> FromValue<'a> for bool {
     fn from_value(
         arena: &'a ValueArena,
