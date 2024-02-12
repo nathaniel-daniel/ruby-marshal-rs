@@ -142,7 +142,7 @@ impl std::fmt::Display for FromValueError {
                     DisplayByteString(name)
                 )
             }
-            Self::Other { .. } => write!(f, "an user-provided error was encountered"),
+            Self::Other { .. } => write!(f, "a user-provided error was encountered"),
         }
     }
 }
@@ -297,9 +297,9 @@ impl<'a> FromValue<'a> for &'a StringValue {
                 // Remove the string from the visited set.
                 // Strings can't be a part of reference cycles since they have no children.
                 visited.remove(&handle);
-                
+
                 Ok(value)
-            },
+            }
             value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
         }
     }

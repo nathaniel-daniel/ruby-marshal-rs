@@ -41,6 +41,22 @@ impl Value {
         }
     }
 
+    /// Get a ref to the [`ObjectValue`], if it is an object.
+    pub fn as_object(&self) -> Option<&ObjectValue> {
+        match self {
+            Self::Object(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Get a ref to the [`StringValue`], if it is a string.
+    pub fn as_string(&self) -> Option<&StringValue> {
+        match self {
+            Self::String(value) => Some(value),
+            _ => None,
+        }
+    }
+
     /// Get the kind of value.
     pub fn kind(&self) -> ValueKind {
         match self {
