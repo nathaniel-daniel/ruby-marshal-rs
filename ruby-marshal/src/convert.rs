@@ -293,7 +293,13 @@ impl<'a> FromValue<'a> for &'a StringValue {
     ) -> Result<Self, FromValueError> {
         let value: &Value = FromValue::from_value(arena, handle, visited)?;
         match value {
-            Value::String(value) => Ok(value),
+            Value::String(value) => {
+                // Remove the string from the visited set.
+                // Strings can't be a part of reference cycles since they have no children.
+                visited.remove(&handle);
+                
+                Ok(value)
+            },
             value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
         }
     }
