@@ -1,6 +1,7 @@
 use crate::ArrayValue;
 use crate::BoolValue;
 use crate::FixnumValue;
+use crate::HashValue;
 use crate::NilValue;
 use crate::ObjectValue;
 use crate::StringValue;
@@ -9,7 +10,6 @@ use crate::UserDefinedValue;
 use crate::Value;
 use crate::ValueArena;
 use crate::ValueHandle;
-use crate::HashValue;
 use crate::ValueKind;
 use std::collections::HashSet;
 
@@ -34,9 +34,17 @@ pub enum FromValueError {
         kind: ValueKind,
     },
 
-    /// An object name was unexpected
+    /// An object name was unexpected.
     UnexpectedObjectName {
         /// The object name.
+        ///
+        /// This may or may not be UTF-8.
+        name: Vec<u8>,
+    },
+
+    /// A user defined value name was unexpected.
+    UnexpectedUserDefinedName {
+        /// The user defined name.
         ///
         /// This may or may not be UTF-8.
         name: Vec<u8>,
@@ -105,6 +113,13 @@ impl std::fmt::Display for FromValueError {
             Self::UnexpectedValueKind { kind } => write!(f, "unexpected value kind {kind:?}"),
             Self::UnexpectedObjectName { name } => {
                 write!(f, "unexpected object name \"{}\"", DisplayByteString(name))
+            }
+            Self::UnexpectedUserDefinedName { name } => {
+                write!(
+                    f,
+                    "unexpected user defined name \"{}\"",
+                    DisplayByteString(name)
+                )
             }
             Self::DuplicateInstanceVariable { name } => {
                 write!(
