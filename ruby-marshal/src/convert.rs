@@ -8,6 +8,7 @@ use crate::SymbolValue;
 use crate::Value;
 use crate::ValueArena;
 use crate::ValueHandle;
+use crate::HashValue;
 use crate::ValueKind;
 use std::collections::HashSet;
 
@@ -235,6 +236,20 @@ impl<'a> FromValue<'a> for &'a ArrayValue {
         let value: &Value = FromValue::from_value(arena, handle, visited)?;
         match value {
             Value::Array(value) => Ok(value),
+            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
+        }
+    }
+}
+
+impl<'a> FromValue<'a> for &'a HashValue {
+    fn from_value(
+        arena: &'a ValueArena,
+        handle: ValueHandle,
+        visited: &mut HashSet<ValueHandle>,
+    ) -> Result<Self, FromValueError> {
+        let value: &Value = FromValue::from_value(arena, handle, visited)?;
+        match value {
+            Value::Hash(value) => Ok(value),
             value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
         }
     }
