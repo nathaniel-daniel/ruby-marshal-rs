@@ -1,6 +1,7 @@
 mod from_value;
 
 pub use self::from_value::FromValue;
+pub use self::from_value::FromValueContext;
 pub use self::from_value::FromValueError;
 use crate::ValueArena;
 use crate::ValueHandle;
@@ -100,7 +101,6 @@ mod test {
     use crate::SymbolValue;
     use crate::UserDefinedValue;
     use crate::Value;
-    use std::collections::HashSet;
 
     #[test]
     fn sanity() {
@@ -120,70 +120,66 @@ mod test {
 
         let symbol_handle = symbol_handle.into_raw();
 
-        let mut visited = HashSet::new();
+        let ctx = FromValueContext::new(&arena);
 
-        let _value: &Value = <&Value>::from_value(&arena, nil_handle, &mut visited)
+        let _value: &Value = ctx
+            .from_value(nil_handle)
             .expect("failed to exec &Value::from_value");
 
-        visited.clear();
-        let _nil_value: &NilValue = <&NilValue>::from_value(&arena, nil_handle, &mut visited)
+        let _nil_value: &NilValue = ctx
+            .from_value(nil_handle)
             .expect("failed exec &NilValue::from_value");
 
-        visited.clear();
-        let _bool_value: &BoolValue = <&BoolValue>::from_value(&arena, bool_handle, &mut visited)
+        let _bool_value: &BoolValue = ctx
+            .from_value(bool_handle)
             .expect("failed exec &BoolValue::from_value");
 
-        visited.clear();
-        let _fixnum_value: &FixnumValue =
-            <&FixnumValue>::from_value(&arena, fixnum_handle, &mut visited)
-                .expect("failed exec &FixnumValue::from_value");
+        let _fixnum_value: &FixnumValue = ctx
+            .from_value(fixnum_handle)
+            .expect("failed exec &FixnumValue::from_value");
 
-        visited.clear();
-        let _symbol_value: &SymbolValue =
-            <&SymbolValue>::from_value(&arena, symbol_handle, &mut visited)
-                .expect("failed exec &SymbolValue::from_value");
+        let _symbol_value: &SymbolValue = ctx
+            .from_value(symbol_handle)
+            .expect("failed exec &SymbolValue::from_value");
 
-        visited.clear();
-        let _array_value: &ArrayValue =
-            <&ArrayValue>::from_value(&arena, array_handle, &mut visited)
-                .expect("failed exec &ArrayValue::from_value");
+        let _array_value: &ArrayValue = ctx
+            .from_value(array_handle)
+            .expect("failed exec &ArrayValue::from_value");
 
-        visited.clear();
-        let _hash_value: &HashValue = <&HashValue>::from_value(&arena, hash_handle, &mut visited)
+        let _hash_value: &HashValue = ctx
+            .from_value(hash_handle)
             .expect("failed exec &HashValue::from_value");
 
-        visited.clear();
-        let _string_value: &ObjectValue =
-            <&ObjectValue>::from_value(&arena, object_handle, &mut visited)
-                .expect("failed exec &ObjectValue::from_value");
+        let _string_value: &ObjectValue = ctx
+            .from_value(object_handle)
+            .expect("failed exec &ObjectValue::from_value");
 
-        visited.clear();
-        let _string_value: &StringValue =
-            <&StringValue>::from_value(&arena, string_handle, &mut visited)
-                .expect("failed exec &StringValue::from_value");
+        let _string_value: &StringValue = ctx
+            .from_value(string_handle)
+            .expect("failed exec &StringValue::from_value");
 
-        visited.clear();
-        let _user_defined_value: &UserDefinedValue =
-            <&UserDefinedValue>::from_value(&arena, user_defined_handle, &mut visited)
-                .expect("failed exec &UserDefinedValue::from_value");
+        let _user_defined_value: &UserDefinedValue = ctx
+            .from_value(user_defined_handle)
+            .expect("failed exec &UserDefinedValue::from_value");
 
-        visited.clear();
-        let _bool_value: bool = <bool>::from_value(&arena, bool_handle, &mut visited)
+        let _bool_value: bool = ctx
+            .from_value(bool_handle)
             .expect("failed exec bool::from_value");
 
-        visited.clear();
-        let _i32_value: i32 = <i32>::from_value(&arena, fixnum_handle, &mut visited)
+        let _i32_value: i32 = ctx
+            .from_value(fixnum_handle)
             .expect("failed exec i32::from_value");
 
-        visited.clear();
-        let _some_symbol_value: Option<&SymbolValue> =
-            <Option<&SymbolValue>>::from_value(&arena, symbol_handle, &mut visited)
-                .expect("failed exec Option<&SymbolValue>::from_value");
-        let _none_symbol_value: Option<&SymbolValue> =
-            <Option<&SymbolValue>>::from_value(&arena, nil_handle, &mut visited)
-                .expect("failed exec Option<&SymbolValue>::from_value");
+        let _some_symbol_value: Option<&SymbolValue> = ctx
+            .from_value(symbol_handle)
+            .expect("failed exec Option<&SymbolValue>::from_value");
 
-        let _vec_value: Vec<i32> = <Vec<i32>>::from_value(&arena, array_handle, &mut visited)
+        let _none_symbol_value: Option<&SymbolValue> = ctx
+            .from_value(nil_handle)
+            .expect("failed exec Option<&SymbolValue>::from_value");
+
+        let _vec_value: Vec<i32> = ctx
+            .from_value(array_handle)
             .expect("failed exec <Vec<i32>>::from_value");
 
         true.into_value(&mut arena)
@@ -192,6 +188,7 @@ mod test {
         0_i32
             .into_value(&mut arena)
             .expect("failed to exec i32::into_value");
+
         vec![0, 1, 2]
             .into_value(&mut arena)
             .expect("failed to exec Vec::<i32>::into_value");

@@ -12,7 +12,7 @@ use crate::Value;
 use crate::ValueArena;
 use crate::ValueHandle;
 use crate::ValueKind;
-use std::collections::HashSet;
+use std::cell::RefCell;
 
 /// An error that may occur while creating a type from a Ruby Value.
 #[derive(Debug)]
@@ -144,44 +144,101 @@ impl std::error::Error for FromValueError {
     }
 }
 
+/// A context to manage extracting values.
+pub struct FromValueContext<'a> {
+    arena: &'a ValueArena,
+    stack: RefCell<Vec<ValueHandle>>,
+}
+
+impl<'a> FromValueContext<'a> {
+    /// Create a new context from an arena.
+    pub fn new(arena: &'a ValueArena) -> Self {
+        Self {
+            arena,
+            stack: RefCell::new(Vec::new()),
+        }
+    }
+
+    fn begin_handle(&self, handle: ValueHandle) -> Result<(), FromValueError> {
+        let mut stack = self.stack.borrow_mut();
+
+        if stack.contains(&handle) {
+            return Err(FromValueError::Cycle { handle });
+        }
+
+        stack.push(handle);
+
+        Ok(())
+    }
+
+    fn end_handle(&self, handle: ValueHandle) {
+        let stack_handle = self.stack.borrow_mut().pop();
+
+        // This should always be Some.
+        let stack_handle = stack_handle.unwrap();
+
+        assert!(handle == stack_handle);
+    }
+
+    // The "value" here is a represented by the value handle.
+    #[allow(clippy::wrong_self_convention)]
+    /// Extract a type from a value.
+    pub fn from_value<T>(&self, handle: ValueHandle) -> Result<T, FromValueError>
+    where
+        T: FromValue<'a>,
+    {
+        let guard = FromValueGuard::new(self, handle)?;
+        let value = self
+            .arena
+            .get(handle)
+            .ok_or(FromValueError::InvalidValueHandle { handle })?;
+        let value = T::from_value(self, value)?;
+        drop(guard);
+
+        Ok(value)
+    }
+}
+
+/// A guard for a handle.
+///
+/// Do NOT drop this before you are done using the handle and its children.
+pub struct FromValueGuard<'a, 'b> {
+    ctx: &'a FromValueContext<'b>,
+    handle: ValueHandle,
+}
+
+impl<'a, 'b> FromValueGuard<'a, 'b> {
+    fn new(ctx: &'a FromValueContext<'b>, handle: ValueHandle) -> Result<Self, FromValueError> {
+        ctx.begin_handle(handle)?;
+
+        Ok(Self { ctx, handle })
+    }
+}
+
+impl<'a, 'b> Drop for FromValueGuard<'a, 'b> {
+    fn drop(&mut self) {
+        self.ctx.end_handle(self.handle);
+    }
+}
+
 /// Implemented for any type that can be created from a Ruby Value.
 pub trait FromValue<'a>: Sized {
     /// Create this type from the given value from the [`ValueArena`].
     ///
     /// # Arguments
-    /// 1. `arena`: The arena where the value to convert from is stored.
+    /// 1. `ctx`: The value extraction context.
     /// 2. `handle`: The handle that points to the value to convert.
-    /// 3. `visited`: A set of already-visited values, to prevent cycles.
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError>;
+    fn from_value(ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError>;
 }
 
 impl<'a> FromValue<'a> for &'a Value {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        if !visited.insert(handle) {
-            return Err(FromValueError::Cycle { handle });
-        }
-
-        arena
-            .get(handle)
-            .ok_or(FromValueError::InvalidValueHandle { handle })
+    fn from_value(_ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
+        Ok(value)
     }
 }
 
 impl<'a> FromValue<'a> for &'a NilValue {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &Value = FromValue::from_value(arena, handle, visited)?;
+    fn from_value(_ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
         match value {
             Value::Nil(value) => Ok(value),
             value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
@@ -190,12 +247,7 @@ impl<'a> FromValue<'a> for &'a NilValue {
 }
 
 impl<'a> FromValue<'a> for &'a BoolValue {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &Value = FromValue::from_value(arena, handle, visited)?;
+    fn from_value(_ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
         match value {
             Value::Bool(value) => Ok(value),
             value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
@@ -204,12 +256,7 @@ impl<'a> FromValue<'a> for &'a BoolValue {
 }
 
 impl<'a> FromValue<'a> for &'a FixnumValue {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &Value = FromValue::from_value(arena, handle, visited)?;
+    fn from_value(_ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
         match value {
             Value::Fixnum(value) => Ok(value),
             value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
@@ -218,12 +265,7 @@ impl<'a> FromValue<'a> for &'a FixnumValue {
 }
 
 impl<'a> FromValue<'a> for &'a SymbolValue {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &Value = FromValue::from_value(arena, handle, visited)?;
+    fn from_value(_ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
         match value {
             Value::Symbol(value) => Ok(value),
             value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
@@ -232,12 +274,7 @@ impl<'a> FromValue<'a> for &'a SymbolValue {
 }
 
 impl<'a> FromValue<'a> for &'a ArrayValue {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &Value = FromValue::from_value(arena, handle, visited)?;
+    fn from_value(_ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
         match value {
             Value::Array(value) => Ok(value),
             value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
@@ -246,12 +283,7 @@ impl<'a> FromValue<'a> for &'a ArrayValue {
 }
 
 impl<'a> FromValue<'a> for &'a HashValue {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &Value = FromValue::from_value(arena, handle, visited)?;
+    fn from_value(_ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
         match value {
             Value::Hash(value) => Ok(value),
             value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
@@ -260,12 +292,7 @@ impl<'a> FromValue<'a> for &'a HashValue {
 }
 
 impl<'a> FromValue<'a> for &'a ObjectValue {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &Value = FromValue::from_value(arena, handle, visited)?;
+    fn from_value(_ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
         match value {
             Value::Object(value) => Ok(value),
             value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
@@ -274,32 +301,16 @@ impl<'a> FromValue<'a> for &'a ObjectValue {
 }
 
 impl<'a> FromValue<'a> for &'a StringValue {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &Value = FromValue::from_value(arena, handle, visited)?;
+    fn from_value(_ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
         match value {
-            Value::String(value) => {
-                // Remove the string from the visited set.
-                // Strings can't be a part of reference cycles since they have no children.
-                visited.remove(&handle);
-
-                Ok(value)
-            }
+            Value::String(value) => Ok(value),
             value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
         }
     }
 }
 
 impl<'a> FromValue<'a> for &'a UserDefinedValue {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &Value = FromValue::from_value(arena, handle, visited)?;
+    fn from_value(_ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
         match value {
             Value::UserDefined(value) => Ok(value),
             value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
@@ -308,23 +319,15 @@ impl<'a> FromValue<'a> for &'a UserDefinedValue {
 }
 
 impl<'a> FromValue<'a> for bool {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &BoolValue = FromValue::from_value(arena, handle, visited)?;
+    fn from_value(ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
+        let value: &BoolValue = FromValue::from_value(ctx, value)?;
         Ok(value.value())
     }
 }
 
 impl<'a> FromValue<'a> for i32 {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &FixnumValue = FromValue::from_value(arena, handle, visited)?;
+    fn from_value(ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
+        let value: &FixnumValue = FromValue::from_value(ctx, value)?;
         Ok(value.value())
     }
 }
@@ -333,17 +336,10 @@ impl<'a, T> FromValue<'a> for Option<T>
 where
     T: FromValue<'a>,
 {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &Value = FromValue::from_value(arena, handle, visited)?;
-        visited.remove(&handle);
-
+    fn from_value(ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
         match value {
             Value::Nil(_) => Ok(None),
-            _ => T::from_value(arena, handle, visited).map(Some),
+            _ => T::from_value(ctx, value).map(Some),
         }
     }
 }
@@ -352,17 +348,14 @@ impl<'a, T> FromValue<'a> for Vec<T>
 where
     T: FromValue<'a>,
 {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let array: &ArrayValue = FromValue::from_value(arena, handle, visited)?;
+    fn from_value(ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
+        let array: &ArrayValue = FromValue::from_value(ctx, value)?;
         let array = array.value();
 
         let mut vec = Vec::with_capacity(array.len());
         for handle in array.iter().copied() {
-            vec.push(FromValue::from_value(arena, handle, visited)?);
+            let value = ctx.from_value(handle)?;
+            vec.push(value);
         }
 
         Ok(vec)

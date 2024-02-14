@@ -4,6 +4,7 @@ mod load;
 mod value_arena;
 
 pub use self::convert::FromValue;
+pub use self::convert::FromValueContext;
 pub use self::convert::FromValueError;
 pub use self::convert::IntoValue;
 pub use self::convert::IntoValueError;
