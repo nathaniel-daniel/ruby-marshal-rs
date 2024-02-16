@@ -3,6 +3,7 @@ mod dump;
 mod load;
 mod value_arena;
 
+pub use self::convert::DisplayByteString;
 pub use self::convert::FromValue;
 pub use self::convert::FromValueContext;
 pub use self::convert::FromValueError;
