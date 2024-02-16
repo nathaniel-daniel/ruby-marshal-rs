@@ -1,96 +1,11 @@
-use crate::ArrayValue;
-use crate::BoolValue;
-use crate::FixnumValue;
-use crate::HashValue;
-use crate::NilValue;
-use crate::ObjectValue;
-use crate::StringValue;
-use crate::SymbolValue;
-use crate::UserDefinedValue;
-use crate::Value;
+mod from_value;
+
+pub use self::from_value::FromValue;
+pub use self::from_value::FromValueContext;
+pub use self::from_value::FromValueError;
 use crate::ValueArena;
 use crate::ValueHandle;
-use crate::ValueKind;
-use std::collections::HashSet;
-
-/// An error that may occur while creating a type from a Ruby Value.
-#[derive(Debug)]
-pub enum FromValueError {
-    /// An already visited node was visited.
-    Cycle {
-        /// The already-visited node.
-        handle: ValueHandle,
-    },
-
-    /// A given [`ValueHandle`] was invalid.
-    InvalidValueHandle {
-        /// The invalid handle
-        handle: ValueHandle,
-    },
-
-    /// An unexpected value kind was encountered.
-    UnexpectedValueKind {
-        /// The unexpected value kind
-        kind: ValueKind,
-    },
-
-    /// An object name was unexpected.
-    UnexpectedObjectName {
-        /// The object name.
-        ///
-        /// This may or may not be UTF-8.
-        name: Vec<u8>,
-    },
-
-    /// A user defined value name was unexpected.
-    UnexpectedUserDefinedName {
-        /// The user defined name.
-        ///
-        /// This may or may not be UTF-8.
-        name: Vec<u8>,
-    },
-
-    /// An instance variable was duplicated
-    DuplicateInstanceVariable {
-        /// The instance variable name.
-        ///
-        /// This may or may not be UTF-8.
-        name: Vec<u8>,
-    },
-
-    /// An unknown instance variable was encountered.
-    UnknownInstanceVariable {
-        /// The instance variable name.
-        ///
-        /// This may or may not be UTF-8.
-        name: Vec<u8>,
-    },
-
-    /// Missing an instance variable with the given name.
-    MissingInstanceVariable {
-        /// The instance variable name.
-        ///
-        /// This may or may not be UTF-8.
-        name: Vec<u8>,
-    },
-
-    /// Another user-provided kind of error occured.
-    Other {
-        error: Box<dyn std::error::Error + Send + Sync + 'static>,
-    },
-}
-
-impl FromValueError {
-    /// Shorthand for creating a new `Other` error variant.
-    pub fn new_other<E>(error: E) -> Self
-    where
-        E: Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
-    {
-        Self::Other {
-            error: error.into(),
-        }
-    }
-}
+use std::collections::HashMap;
 
 #[derive(Debug)]
 struct DisplayByteString<'a>(&'a [u8]);
@@ -102,282 +17,6 @@ impl<'a> std::fmt::Display for DisplayByteString<'a> {
             Ok(string) => write!(f, "{string}"),
             Err(_error) => write!(f, "{string:?}"),
         }
-    }
-}
-
-impl std::fmt::Display for FromValueError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Cycle { .. } => write!(f, "attempted to extract recursively"),
-            Self::InvalidValueHandle { .. } => write!(f, "a handle was invalid"),
-            Self::UnexpectedValueKind { kind } => write!(f, "unexpected value kind {kind:?}"),
-            Self::UnexpectedObjectName { name } => {
-                write!(f, "unexpected object name \"{}\"", DisplayByteString(name))
-            }
-            Self::UnexpectedUserDefinedName { name } => {
-                write!(
-                    f,
-                    "unexpected user defined name \"{}\"",
-                    DisplayByteString(name)
-                )
-            }
-            Self::DuplicateInstanceVariable { name } => {
-                write!(
-                    f,
-                    "instance variable \"{}\" was encountered twice",
-                    DisplayByteString(name)
-                )
-            }
-            Self::UnknownInstanceVariable { name } => {
-                write!(
-                    f,
-                    "instance variable \"{}\" is not known",
-                    DisplayByteString(name)
-                )
-            }
-            Self::MissingInstanceVariable { name } => {
-                write!(
-                    f,
-                    "instance variable \"{}\" is missing",
-                    DisplayByteString(name)
-                )
-            }
-            Self::Other { .. } => write!(f, "a user-provided error was encountered"),
-        }
-    }
-}
-
-impl std::error::Error for FromValueError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::Other { error } => Some(&**error),
-            _ => None,
-        }
-    }
-}
-
-/// Implemented for any type that can be created from a Ruby Value.
-pub trait FromValue<'a>: Sized {
-    /// Create this type from the given value from the [`ValueArena`].
-    ///
-    /// # Arguments
-    /// 1. `arena`: The arena where the value to convert from is stored.
-    /// 2. `handle`: The handle that points to the value to convert.
-    /// 3. `visited`: A set of already-visited values, to prevent cycles.
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError>;
-}
-
-impl<'a> FromValue<'a> for &'a Value {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        if !visited.insert(handle) {
-            return Err(FromValueError::Cycle { handle });
-        }
-
-        arena
-            .get(handle)
-            .ok_or(FromValueError::InvalidValueHandle { handle })
-    }
-}
-
-impl<'a> FromValue<'a> for &'a NilValue {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &Value = FromValue::from_value(arena, handle, visited)?;
-        match value {
-            Value::Nil(value) => Ok(value),
-            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
-        }
-    }
-}
-
-impl<'a> FromValue<'a> for &'a BoolValue {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &Value = FromValue::from_value(arena, handle, visited)?;
-        match value {
-            Value::Bool(value) => Ok(value),
-            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
-        }
-    }
-}
-
-impl<'a> FromValue<'a> for &'a FixnumValue {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &Value = FromValue::from_value(arena, handle, visited)?;
-        match value {
-            Value::Fixnum(value) => Ok(value),
-            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
-        }
-    }
-}
-
-impl<'a> FromValue<'a> for &'a SymbolValue {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &Value = FromValue::from_value(arena, handle, visited)?;
-        match value {
-            Value::Symbol(value) => Ok(value),
-            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
-        }
-    }
-}
-
-impl<'a> FromValue<'a> for &'a ArrayValue {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &Value = FromValue::from_value(arena, handle, visited)?;
-        match value {
-            Value::Array(value) => Ok(value),
-            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
-        }
-    }
-}
-
-impl<'a> FromValue<'a> for &'a HashValue {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &Value = FromValue::from_value(arena, handle, visited)?;
-        match value {
-            Value::Hash(value) => Ok(value),
-            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
-        }
-    }
-}
-
-impl<'a> FromValue<'a> for &'a ObjectValue {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &Value = FromValue::from_value(arena, handle, visited)?;
-        match value {
-            Value::Object(value) => Ok(value),
-            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
-        }
-    }
-}
-
-impl<'a> FromValue<'a> for &'a StringValue {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &Value = FromValue::from_value(arena, handle, visited)?;
-        match value {
-            Value::String(value) => {
-                // Remove the string from the visited set.
-                // Strings can't be a part of reference cycles since they have no children.
-                visited.remove(&handle);
-
-                Ok(value)
-            }
-            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
-        }
-    }
-}
-
-impl<'a> FromValue<'a> for &'a UserDefinedValue {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &Value = FromValue::from_value(arena, handle, visited)?;
-        match value {
-            Value::UserDefined(value) => Ok(value),
-            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
-        }
-    }
-}
-
-impl<'a> FromValue<'a> for bool {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &BoolValue = FromValue::from_value(arena, handle, visited)?;
-        Ok(value.value())
-    }
-}
-
-impl<'a> FromValue<'a> for i32 {
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &FixnumValue = FromValue::from_value(arena, handle, visited)?;
-        Ok(value.value())
-    }
-}
-
-impl<'a, T> FromValue<'a> for Option<T>
-where
-    T: FromValue<'a>,
-{
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let value: &Value = FromValue::from_value(arena, handle, visited)?;
-        visited.remove(&handle);
-
-        match value {
-            Value::Nil(_) => Ok(None),
-            _ => T::from_value(arena, handle, visited).map(Some),
-        }
-    }
-}
-
-impl<'a, T> FromValue<'a> for Vec<T>
-where
-    T: FromValue<'a>,
-{
-    fn from_value(
-        arena: &'a ValueArena,
-        handle: ValueHandle,
-        visited: &mut HashSet<ValueHandle>,
-    ) -> Result<Self, FromValueError> {
-        let array: &ArrayValue = FromValue::from_value(arena, handle, visited)?;
-        let array = array.value();
-
-        let mut vec = Vec::with_capacity(array.len());
-        for handle in array.iter().copied() {
-            vec.push(FromValue::from_value(arena, handle, visited)?);
-        }
-
-        Ok(vec)
     }
 }
 
@@ -450,9 +89,38 @@ where
     }
 }
 
+impl<K, V> IntoValue for HashMap<K, V>
+where
+    K: IntoValue,
+    V: IntoValue,
+{
+    fn into_value(self, arena: &mut ValueArena) -> Result<ValueHandle, IntoValueError> {
+        let mut items = Vec::new();
+
+        for (key, value) in self.into_iter() {
+            let key_handle = key.into_value(arena)?;
+            let value_handle = value.into_value(arena)?;
+
+            items.push((key_handle, value_handle));
+        }
+
+        Ok(arena.create_hash(items, None).into())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::ArrayValue;
+    use crate::BoolValue;
+    use crate::FixnumValue;
+    use crate::HashValue;
+    use crate::NilValue;
+    use crate::ObjectValue;
+    use crate::StringValue;
+    use crate::SymbolValue;
+    use crate::UserDefinedValue;
+    use crate::Value;
 
     #[test]
     fn sanity() {
@@ -472,71 +140,71 @@ mod test {
 
         let symbol_handle = symbol_handle.into_raw();
 
-        let mut visited = HashSet::new();
+        let ctx = FromValueContext::new(&arena);
 
-        let _value: &Value = <&Value>::from_value(&arena, nil_handle, &mut visited)
+        let _value: &Value = ctx
+            .from_value(nil_handle)
             .expect("failed to exec &Value::from_value");
 
-        visited.clear();
-        let _nil_value: &NilValue = <&NilValue>::from_value(&arena, nil_handle, &mut visited)
+        let _nil_value: &NilValue = ctx
+            .from_value(nil_handle)
             .expect("failed exec &NilValue::from_value");
 
-        visited.clear();
-        let _bool_value: &BoolValue = <&BoolValue>::from_value(&arena, bool_handle, &mut visited)
+        let _bool_value: &BoolValue = ctx
+            .from_value(bool_handle)
             .expect("failed exec &BoolValue::from_value");
 
-        visited.clear();
-        let _fixnum_value: &FixnumValue =
-            <&FixnumValue>::from_value(&arena, fixnum_handle, &mut visited)
-                .expect("failed exec &FixnumValue::from_value");
+        let _fixnum_value: &FixnumValue = ctx
+            .from_value(fixnum_handle)
+            .expect("failed exec &FixnumValue::from_value");
 
-        visited.clear();
-        let _symbol_value: &SymbolValue =
-            <&SymbolValue>::from_value(&arena, symbol_handle, &mut visited)
-                .expect("failed exec &SymbolValue::from_value");
+        let _symbol_value: &SymbolValue = ctx
+            .from_value(symbol_handle)
+            .expect("failed exec &SymbolValue::from_value");
 
-        visited.clear();
-        let _array_value: &ArrayValue =
-            <&ArrayValue>::from_value(&arena, array_handle, &mut visited)
-                .expect("failed exec &ArrayValue::from_value");
+        let _array_value: &ArrayValue = ctx
+            .from_value(array_handle)
+            .expect("failed exec &ArrayValue::from_value");
 
-        visited.clear();
-        let _hash_value: &HashValue = <&HashValue>::from_value(&arena, hash_handle, &mut visited)
+        let _hash_value: &HashValue = ctx
+            .from_value(hash_handle)
             .expect("failed exec &HashValue::from_value");
 
-        visited.clear();
-        let _string_value: &ObjectValue =
-            <&ObjectValue>::from_value(&arena, object_handle, &mut visited)
-                .expect("failed exec &ObjectValue::from_value");
+        let _string_value: &ObjectValue = ctx
+            .from_value(object_handle)
+            .expect("failed exec &ObjectValue::from_value");
 
-        visited.clear();
-        let _string_value: &StringValue =
-            <&StringValue>::from_value(&arena, string_handle, &mut visited)
-                .expect("failed exec &StringValue::from_value");
+        let _string_value: &StringValue = ctx
+            .from_value(string_handle)
+            .expect("failed exec &StringValue::from_value");
 
-        visited.clear();
-        let _user_defined_value: &UserDefinedValue =
-            <&UserDefinedValue>::from_value(&arena, user_defined_handle, &mut visited)
-                .expect("failed exec &UserDefinedValue::from_value");
+        let _user_defined_value: &UserDefinedValue = ctx
+            .from_value(user_defined_handle)
+            .expect("failed exec &UserDefinedValue::from_value");
 
-        visited.clear();
-        let _bool_value: bool = <bool>::from_value(&arena, bool_handle, &mut visited)
+        let _bool_value: bool = ctx
+            .from_value(bool_handle)
             .expect("failed exec bool::from_value");
 
-        visited.clear();
-        let _i32_value: i32 = <i32>::from_value(&arena, fixnum_handle, &mut visited)
+        let _i32_value: i32 = ctx
+            .from_value(fixnum_handle)
             .expect("failed exec i32::from_value");
 
-        visited.clear();
-        let _some_symbol_value: Option<&SymbolValue> =
-            <Option<&SymbolValue>>::from_value(&arena, symbol_handle, &mut visited)
-                .expect("failed exec Option<&SymbolValue>::from_value");
-        let _none_symbol_value: Option<&SymbolValue> =
-            <Option<&SymbolValue>>::from_value(&arena, nil_handle, &mut visited)
-                .expect("failed exec Option<&SymbolValue>::from_value");
+        let _some_symbol_value: Option<&SymbolValue> = ctx
+            .from_value(symbol_handle)
+            .expect("failed exec Option<&SymbolValue>::from_value");
 
-        let _vec_value: Vec<i32> = <Vec<i32>>::from_value(&arena, array_handle, &mut visited)
+        let _none_symbol_value: Option<&SymbolValue> = ctx
+            .from_value(nil_handle)
+            .expect("failed exec Option<&SymbolValue>::from_value");
+
+        let _vec_value: Vec<i32> = ctx
+            .from_value(array_handle)
             .expect("failed exec <Vec<i32>>::from_value");
+
+        let _hash_map_value: HashMap<i32, i32> = ctx
+            .from_value(hash_handle)
+            .expect("failed exec <HashMap<i32, i32>>::from_value");
 
         true.into_value(&mut arena)
             .expect("failed to exec bool::into_value");
@@ -544,8 +212,13 @@ mod test {
         0_i32
             .into_value(&mut arena)
             .expect("failed to exec i32::into_value");
+
         vec![0, 1, 2]
             .into_value(&mut arena)
             .expect("failed to exec Vec::<i32>::into_value");
+
+        HashMap::<i32, i32>::new()
+            .into_value(&mut arena)
+            .expect("failed to exec HashMap::<i32, i32>::into_value");
     }
 }
