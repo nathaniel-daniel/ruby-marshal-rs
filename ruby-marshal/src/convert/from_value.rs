@@ -13,6 +13,8 @@ use crate::ValueArena;
 use crate::ValueHandle;
 use crate::ValueKind;
 use std::cell::RefCell;
+use std::collections::HashMap;
+use std::hash::Hash;
 
 /// An error that may occur while creating a type from a Ruby Value.
 #[derive(Debug)]
@@ -75,6 +77,14 @@ pub enum FromValueError {
         name: Vec<u8>,
     },
 
+    /// A hash key was provided twice.
+    DuplicateHashKey {
+        /// The key that was provided twice.
+        ///
+        /// This does not need to be a symbol.
+        key: ValueHandle,
+    },
+
     /// Another user-provided kind of error occured.
     Other {
         error: Box<dyn std::error::Error + Send + Sync + 'static>,
@@ -129,6 +139,9 @@ impl std::fmt::Display for FromValueError {
                     "instance variable \"{}\" is missing",
                     DisplayByteString(name)
                 )
+            }
+            Self::DuplicateHashKey { .. } => {
+                write!(f, "duplicate hash key")
             }
             Self::Other { .. } => write!(f, "a user-provided error was encountered"),
         }
@@ -359,5 +372,30 @@ where
         }
 
         Ok(vec)
+    }
+}
+
+impl<'a, K, V> FromValue<'a> for HashMap<K, V>
+where
+    K: FromValue<'a> + Hash + Eq,
+    V: FromValue<'a>,
+{
+    fn from_value(ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
+        let value: &HashValue = FromValue::from_value(ctx, value)?;
+        let value = value.value();
+
+        let mut map = HashMap::with_capacity(value.len());
+        for (key_handle, value_handle) in value.iter().copied() {
+            let key = ctx.from_value(key_handle)?;
+            let value = ctx.from_value(value_handle)?;
+
+            let old_value = map.insert(key, value);
+
+            if old_value.is_some() {
+                return Err(FromValueError::DuplicateHashKey { key: key_handle });
+            }
+        }
+
+        Ok(map)
     }
 }
