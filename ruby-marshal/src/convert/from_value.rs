@@ -35,6 +35,9 @@ pub enum FromValueError {
     UnexpectedValueKind {
         /// The unexpected value kind
         kind: ValueKind,
+
+        /// The current path of value handles
+        trace: Vec<ValueHandle>,
     },
 
     /// An object name was unexpected.
@@ -108,7 +111,7 @@ impl std::fmt::Display for FromValueError {
         match self {
             Self::Cycle { .. } => write!(f, "attempted to extract recursively"),
             Self::InvalidValueHandle { .. } => write!(f, "a handle was invalid"),
-            Self::UnexpectedValueKind { kind } => write!(f, "unexpected value kind {kind:?}"),
+            Self::UnexpectedValueKind { kind, .. } => write!(f, "unexpected value kind {kind:?}"),
             Self::UnexpectedObjectName { name } => {
                 write!(f, "unexpected object name \"{}\"", DisplayByteString(name))
             }
@@ -210,6 +213,14 @@ impl<'a> FromValueContext<'a> {
 
         Ok(value)
     }
+
+    /// Create a new UnexpectedValueKind error
+    pub fn new_unexpected_value_kind_error(&self, kind: ValueKind) -> FromValueError {
+        FromValueError::UnexpectedValueKind {
+            kind,
+            trace: self.stack.borrow().clone(),
+        }
+    }
 }
 
 /// A guard for a handle.
@@ -251,82 +262,82 @@ impl<'a> FromValue<'a> for &'a Value {
 }
 
 impl<'a> FromValue<'a> for &'a NilValue {
-    fn from_value(_ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
+    fn from_value(ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
         match value {
             Value::Nil(value) => Ok(value),
-            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
+            value => Err(ctx.new_unexpected_value_kind_error(value.kind())),
         }
     }
 }
 
 impl<'a> FromValue<'a> for &'a BoolValue {
-    fn from_value(_ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
+    fn from_value(ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
         match value {
             Value::Bool(value) => Ok(value),
-            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
+            value => Err(ctx.new_unexpected_value_kind_error(value.kind())),
         }
     }
 }
 
 impl<'a> FromValue<'a> for &'a FixnumValue {
-    fn from_value(_ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
+    fn from_value(ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
         match value {
             Value::Fixnum(value) => Ok(value),
-            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
+            value => Err(ctx.new_unexpected_value_kind_error(value.kind())),
         }
     }
 }
 
 impl<'a> FromValue<'a> for &'a SymbolValue {
-    fn from_value(_ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
+    fn from_value(ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
         match value {
             Value::Symbol(value) => Ok(value),
-            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
+            value => Err(ctx.new_unexpected_value_kind_error(value.kind())),
         }
     }
 }
 
 impl<'a> FromValue<'a> for &'a ArrayValue {
-    fn from_value(_ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
+    fn from_value(ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
         match value {
             Value::Array(value) => Ok(value),
-            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
+            value => Err(ctx.new_unexpected_value_kind_error(value.kind())),
         }
     }
 }
 
 impl<'a> FromValue<'a> for &'a HashValue {
-    fn from_value(_ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
+    fn from_value(ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
         match value {
             Value::Hash(value) => Ok(value),
-            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
+            value => Err(ctx.new_unexpected_value_kind_error(value.kind())),
         }
     }
 }
 
 impl<'a> FromValue<'a> for &'a ObjectValue {
-    fn from_value(_ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
+    fn from_value(ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
         match value {
             Value::Object(value) => Ok(value),
-            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
+            value => Err(ctx.new_unexpected_value_kind_error(value.kind())),
         }
     }
 }
 
 impl<'a> FromValue<'a> for &'a StringValue {
-    fn from_value(_ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
+    fn from_value(ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
         match value {
             Value::String(value) => Ok(value),
-            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
+            value => Err(ctx.new_unexpected_value_kind_error(value.kind())),
         }
     }
 }
 
 impl<'a> FromValue<'a> for &'a UserDefinedValue {
-    fn from_value(_ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
+    fn from_value(ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
         match value {
             Value::UserDefined(value) => Ok(value),
-            value => Err(FromValueError::UnexpectedValueKind { kind: value.kind() }),
+            value => Err(ctx.new_unexpected_value_kind_error(value.kind())),
         }
     }
 }
