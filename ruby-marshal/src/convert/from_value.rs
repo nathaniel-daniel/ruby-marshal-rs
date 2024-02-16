@@ -375,6 +375,28 @@ where
     }
 }
 
+/// An error that may occur while extracting a HashMap from a value.
+#[derive(Debug)]
+pub enum HashMapFromValueError {
+    /// The HashMap cannot be extracted since it has a default value.
+    HasDefaultValue {
+        /// The default value
+        value: ValueHandle,
+    },
+}
+
+impl std::fmt::Display for HashMapFromValueError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::HasDefaultValue { .. } => {
+                write!(f, "HashValue has a default value")
+            }
+        }
+    }
+}
+
+impl std::error::Error for HashMapFromValueError {}
+
 impl<'a, K, V> FromValue<'a> for HashMap<K, V>
 where
     K: FromValue<'a> + Hash + Eq,
@@ -382,6 +404,15 @@ where
 {
     fn from_value(ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
         let value: &HashValue = FromValue::from_value(ctx, value)?;
+
+        if let Some(default_value) = value.default_value() {
+            return Err(FromValueError::new_other(
+                HashMapFromValueError::HasDefaultValue {
+                    value: default_value,
+                },
+            ));
+        }
+
         let value = value.value();
 
         let mut map = HashMap::with_capacity(value.len());
