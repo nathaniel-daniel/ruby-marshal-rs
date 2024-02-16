@@ -205,13 +205,14 @@ where
 
         let len = self.read_fixnum_value()?;
         let len = usize::try_from(len).map_err(|error| Error::FixnumInvalidUSize { error })?;
-        let mut value = Vec::with_capacity(len);
+        let mut array_value = Vec::with_capacity(len);
 
         for _ in 0..len {
-            value.push(self.read_value()?);
+            let value = self.read_value()?;
+            array_value.push(value);
         }
 
-        *self.arena.get_mut(handle).unwrap() = ArrayValue::new(value).into();
+        *self.arena.get_mut(handle).unwrap() = ArrayValue::new(array_value).into();
 
         Ok(TypedValueHandle::new_unchecked(handle))
     }
@@ -273,7 +274,10 @@ where
         let name = self.read_value_symbol_like()?;
         let value = self.read_byte_string()?;
 
-        Ok(self.arena.create_user_defined(name, value))
+        let handle = self.arena.create_user_defined(name, value);
+        self.object_links.push(handle.into());
+
+        Ok(handle)
     }
 
     /// Read the next value, failing if it is not a symbol-like value.
