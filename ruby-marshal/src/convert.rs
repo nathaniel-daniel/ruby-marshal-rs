@@ -9,7 +9,7 @@ use std::collections::HashMap;
 
 /// A utility to display a byte sequence as a string if it is UTF8 or a slice otherwise.
 #[derive(Debug)]
-pub struct DisplayByteString<'a>(&'a [u8]);
+pub struct DisplayByteString<'a>(pub &'a [u8]);
 
 impl<'a> std::fmt::Display for DisplayByteString<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
