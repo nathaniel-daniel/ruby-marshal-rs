@@ -5,6 +5,7 @@ pub use self::from_value::FromValueContext;
 pub use self::from_value::FromValueError;
 use crate::ValueArena;
 use crate::ValueHandle;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 struct DisplayByteString<'a>(&'a [u8]);
@@ -85,6 +86,25 @@ where
             array.push(item.into_value(arena)?);
         }
         Ok(arena.create_array(array).into())
+    }
+}
+
+impl<K, V> IntoValue for HashMap<K, V>
+where
+    K: IntoValue,
+    V: IntoValue,
+{
+    fn into_value(self, arena: &mut ValueArena) -> Result<ValueHandle, IntoValueError> {
+        let mut items = Vec::new();
+
+        for (key, value) in self.into_iter() {
+            let key_handle = key.into_value(arena)?;
+            let value_handle = value.into_value(arena)?;
+
+            items.push((key_handle, value_handle));
+        }
+
+        Ok(arena.create_hash(items, None).into())
     }
 }
 
@@ -182,6 +202,10 @@ mod test {
             .from_value(array_handle)
             .expect("failed exec <Vec<i32>>::from_value");
 
+        let _hash_map_value: HashMap<i32, i32> = ctx
+            .from_value(hash_handle)
+            .expect("failed exec <HashMap<i32, i32>>::from_value");
+
         true.into_value(&mut arena)
             .expect("failed to exec bool::into_value");
 
@@ -192,5 +216,9 @@ mod test {
         vec![0, 1, 2]
             .into_value(&mut arena)
             .expect("failed to exec Vec::<i32>::into_value");
+
+        HashMap::<i32, i32>::new()
+            .into_value(&mut arena)
+            .expect("failed to exec HashMap::<i32, i32>::into_value");
     }
 }
