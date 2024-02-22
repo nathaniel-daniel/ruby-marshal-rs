@@ -5,5 +5,5 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-generational-arena = "0.2.9"
 indexmap = "2.2.2"
+slotmap = "1.0.7"

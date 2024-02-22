@@ -6,13 +6,13 @@ use std::marker::PhantomData;
 #[derive(Debug, Copy, Clone, Eq, Hash, PartialEq)]
 pub struct ValueHandle {
     /// The arena index
-    pub(super) index: generational_arena::Index,
+    pub(super) index: slotmap::DefaultKey,
     // TODO: Should we an a counter to the arena itself to prevent accidental accesses to other arenas?
 }
 
 impl ValueHandle {
     /// Create a new [`ValueHandle`] from an Index
-    pub(super) fn new(index: generational_arena::Index) -> Self {
+    pub(super) fn new(index: slotmap::DefaultKey) -> Self {
         Self { index }
     }
 }
