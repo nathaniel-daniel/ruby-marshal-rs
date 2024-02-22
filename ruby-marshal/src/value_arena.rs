@@ -14,11 +14,12 @@ pub use self::value::Value;
 pub use self::value::ValueKind;
 pub use self::value_handle::TypedValueHandle;
 pub use self::value_handle::ValueHandle;
+use slotmap::SlotMap;
 
 /// An arena of Ruby values.
 #[derive(Debug)]
 pub struct ValueArena {
-    arena: generational_arena::Arena<Value>,
+    arena: SlotMap<slotmap::DefaultKey, Value>,
     root: ValueHandle,
 }
 
@@ -27,7 +28,7 @@ impl ValueArena {
     ///
     /// The root node is nil.
     pub fn new() -> Self {
-        let mut arena = generational_arena::Arena::new();
+        let mut arena = SlotMap::new();
         let root = ValueHandle::new(arena.insert(Value::Nil(NilValue)));
 
         Self { arena, root }
