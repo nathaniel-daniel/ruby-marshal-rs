@@ -1,0 +1,1 @@
+window.ALL_CRATES = ["ruby_marshal","ruby_marshal_cli"];
