@@ -7,6 +7,7 @@ pub use self::convert::DisplayByteString;
 pub use self::convert::FromValue;
 pub use self::convert::FromValueContext;
 pub use self::convert::FromValueError;
+pub use self::convert::HashMapFromValueError;
 pub use self::convert::IntoValue;
 pub use self::convert::IntoValueError;
 pub use self::dump::dump;
