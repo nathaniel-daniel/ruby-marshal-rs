@@ -3,6 +3,7 @@ mod from_value;
 pub use self::from_value::FromValue;
 pub use self::from_value::FromValueContext;
 pub use self::from_value::FromValueError;
+pub use self::from_value::HashMapFromValueError;
 use crate::ValueArena;
 use crate::ValueHandle;
 use std::collections::HashMap;
@@ -106,6 +107,18 @@ where
         }
 
         Ok(arena.create_hash(items, None).into())
+    }
+}
+
+impl<T> IntoValue for Option<T>
+where
+    T: IntoValue,
+{
+    fn into_value(self, arena: &mut ValueArena) -> Result<ValueHandle, IntoValueError> {
+        match self {
+            Some(value) => value.into_value(arena),
+            None => Ok(arena.create_nil().into()),
+        }
     }
 }
 
@@ -221,5 +234,13 @@ mod test {
         HashMap::<i32, i32>::new()
             .into_value(&mut arena)
             .expect("failed to exec HashMap::<i32, i32>::into_value");
+
+        Some(2_i32)
+            .into_value(&mut arena)
+            .expect("failed to exec Option::<i32, i32>::Some::into_value");
+
+        None::<i32>
+            .into_value(&mut arena)
+            .expect("failed to exec Option::<i32, i32>::Some::into_value");
     }
 }
