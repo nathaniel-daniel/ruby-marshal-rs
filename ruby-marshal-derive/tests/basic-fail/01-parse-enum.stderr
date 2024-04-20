@@ -1,0 +1,11 @@
+error: only structs are supported
+ --> tests/basic-fail/01-parse-enum.rs:2:1
+  |
+2 | / pub enum MyObject {
+3 | |     A {
+4 | |         field1: i32,
+5 | |     },
+... |
+8 | |     },
+9 | | }
+  | |_^
