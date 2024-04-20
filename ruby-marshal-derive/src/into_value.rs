@@ -59,7 +59,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
         let name_str = match name_attribute {
             Some(name) => name,
-            None => LitByteStr::new(name.to_string().as_bytes(), name.span()),
+            None => LitByteStr::new(format!("@{name}").as_bytes(), name.span()),
         };
         fields.push(IntoValueField { name, name_str });
     }

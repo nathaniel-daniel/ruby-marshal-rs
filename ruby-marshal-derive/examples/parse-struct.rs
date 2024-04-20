@@ -5,7 +5,7 @@ use ruby_marshal::IntoValue;
 pub struct MyObject {
     field1: i32,
 
-    #[ruby_marshal(name = b"@renamed_field2")]
+    #[ruby_marshal(name = b"renamed_field2")]
     field2: Vec<i32>,
 }
 
@@ -14,8 +14,8 @@ fn main() {
 
     let object_name = arena.create_symbol("MyObject".into());
 
-    let object_field1_name = arena.create_symbol("field1".into());
-    let object_field2_name = arena.create_symbol("@renamed_field2".into());
+    let object_field1_name = arena.create_symbol("@field1".into());
+    let object_field2_name = arena.create_symbol("renamed_field2".into());
 
     let field1_value = arena.create_fixnum(21).into();
     let field2_value = arena.create_array(vec![field1_value, field1_value]);
