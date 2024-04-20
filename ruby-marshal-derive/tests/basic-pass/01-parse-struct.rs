@@ -1,4 +1,4 @@
-#[derive(ruby_marshal_derive::FromValue)]
+#[derive(ruby_marshal_derive::FromValue, ruby_marshal_derive::IntoValue)]
 #[ruby_marshal(object = b"MyObject")]
 pub struct MyObject {
     field: i32,

@@ -1,4 +1,6 @@
-#[derive(Debug, ruby_marshal_derive::FromValue)]
+use ruby_marshal::IntoValue;
+
+#[derive(Debug, ruby_marshal_derive::FromValue, ruby_marshal_derive::IntoValue)]
 #[ruby_marshal(object = b"MyObject")]
 pub struct MyObject {
     field1: i32,
@@ -29,6 +31,13 @@ fn main() {
 
     let ctx = ruby_marshal::FromValueContext::new(&arena);
     let object: MyObject = ctx.from_value(arena.root()).unwrap();
-    dbg!(object.field1);
-    dbg!(object.field2);
+    dbg!(&object.field1);
+    dbg!(&object.field2);
+
+    let encoded = object.into_value(&mut arena).unwrap();
+    let ctx = ruby_marshal::FromValueContext::new(&arena);
+    let decoded: MyObject = ctx.from_value(encoded).unwrap();
+
+    dbg!(&decoded.field1);
+    dbg!(&decoded.field2);
 }
