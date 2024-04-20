@@ -51,14 +51,13 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     return error.into();
                 }
             };
-        let name_attribute = field_attributes;
 
         let name = field
             .ident
             .as_ref()
             .expect("named field structs should have named fields");
 
-        let name_str = match name_attribute {
+        let name_str = match field_attributes.name {
             Some(name) => name,
             None => LitByteStr::new(format!("@{name}").as_bytes(), name.span()),
         };
@@ -66,6 +65,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             name,
             name_str,
             ty: &field.ty,
+            into_value: field_attributes.into_value,
         });
     }
 
@@ -82,12 +82,21 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let field_name = &field.name;
         let ty = &field.ty;
         let ty_span = ty.span();
-        
-        let cast_type = quote_spanned! {ty_span=>
-            <#ty as ::ruby_marshal::IntoValue>
-        };
-        quote!{
-            let #ident = #cast_type::into_value(self.#field_name, arena)?;
+
+        match field.into_value.as_ref() {
+            Some(into_value) => {
+                quote_spanned! {into_value.span()=>
+                    let #ident = #into_value(self.#field_name, arena)?;
+                }
+            }
+            None => {
+                let cast_type = quote_spanned! {ty_span=>
+                    <#ty as ::ruby_marshal::IntoValue>
+                };
+                quote! {
+                    let #ident = #cast_type::into_value(self.#field_name, arena)?;
+                }
+            }
         }
     });
 
@@ -131,4 +140,5 @@ struct IntoValueField<'a> {
     name: &'a Ident,
     name_str: LitByteStr,
     ty: &'a Type,
+    into_value: Option<syn::Path>,
 }

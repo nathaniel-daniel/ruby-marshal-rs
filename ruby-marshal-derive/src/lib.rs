@@ -78,8 +78,16 @@ pub(crate) fn parse_container_attributes(input: &DeriveInput) -> syn::Result<Lit
     Ok(object_name)
 }
 
-pub(crate) fn parse_field_attributes(field: &Field) -> syn::Result<Option<LitByteStr>> {
+pub(crate) struct FieldAttributes {
+    pub name: Option<LitByteStr>,
+    pub from_value: Option<syn::Path>,
+    pub into_value: Option<syn::Path>,
+}
+
+pub(crate) fn parse_field_attributes(field: &Field) -> syn::Result<FieldAttributes> {
     let mut name = None;
+    let mut from_value = None;
+    let mut into_value = None;
     for attr in field.attrs.iter() {
         if attr.path().is_ident("ruby_marshal") {
             let nested = attr.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
@@ -111,6 +119,66 @@ pub(crate) fn parse_field_attributes(field: &Field) -> syn::Result<Option<LitByt
 
                         name = Some(value.clone());
                     }
+                    Meta::NameValue(name_value) if name_value.path.is_ident("from_value") => {
+                        if from_value.is_some() {
+                            return Err(syn::Error::new(
+                                meta.span(),
+                                "duplicate from_value attributes",
+                            ));
+                        }
+
+                        let value = match &name_value.value {
+                            Expr::Lit(value) => match &value.lit {
+                                Lit::Str(value) => Some(value),
+                                _ => None,
+                            },
+                            _ => None,
+                        };
+
+                        let value = match value {
+                            Some(value) => value,
+                            None => {
+                                return Err(syn::Error::new_spanned(
+                                    value,
+                                    "from_value attribute must be a string literal",
+                                ));
+                            }
+                        };
+
+                        let value = value.parse::<syn::Path>()?;
+
+                        from_value = Some(value);
+                    }
+                    Meta::NameValue(name_value) if name_value.path.is_ident("into_value") => {
+                        if into_value.is_some() {
+                            return Err(syn::Error::new(
+                                meta.span(),
+                                "duplicate into_value attributes",
+                            ));
+                        }
+
+                        let value = match &name_value.value {
+                            Expr::Lit(value) => match &value.lit {
+                                Lit::Str(value) => Some(value),
+                                _ => None,
+                            },
+                            _ => None,
+                        };
+
+                        let value = match value {
+                            Some(value) => value,
+                            None => {
+                                return Err(syn::Error::new_spanned(
+                                    value,
+                                    "into_value attribute must be a string literal",
+                                ));
+                            }
+                        };
+
+                        let value = value.parse::<syn::Path>()?;
+
+                        into_value = Some(value.clone());
+                    }
                     _ => {
                         return Err(syn::Error::new_spanned(
                             meta,
@@ -122,5 +190,9 @@ pub(crate) fn parse_field_attributes(field: &Field) -> syn::Result<Option<LitByt
         }
     }
 
-    Ok(name)
+    Ok(FieldAttributes {
+        name,
+        from_value,
+        into_value,
+    })
 }

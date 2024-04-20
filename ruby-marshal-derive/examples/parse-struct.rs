@@ -1,4 +1,11 @@
+use ruby_marshal::FromValue;
+use ruby_marshal::FromValueContext;
+use ruby_marshal::FromValueError;
 use ruby_marshal::IntoValue;
+use ruby_marshal::StringValue;
+use ruby_marshal::Value;
+use ruby_marshal::ValueArena;
+use ruby_marshal::ValueHandle;
 
 #[derive(Debug, ruby_marshal_derive::FromValue, ruby_marshal_derive::IntoValue)]
 #[ruby_marshal(object = b"MyObject")]
@@ -8,7 +15,28 @@ pub struct MyObject {
     #[ruby_marshal(name = b"renamed_field2")]
     field2: Vec<i32>,
 
+    #[ruby_marshal(from_value = "ruby_string2string", into_value = "string2ruby_string")]
     field3: String,
+}
+
+fn ruby_string2string<'a>(
+    ctx: &FromValueContext,
+    value: &'a Value,
+) -> Result<String, FromValueError> {
+    let value: &StringValue = FromValue::from_value(ctx, value)?;
+    let value = value.value();
+    let value = std::str::from_utf8(value)
+        .map_err(FromValueError::new_other)?
+        .to_string();
+
+    Ok(value)
+}
+
+fn string2ruby_string(
+    s: String,
+    arena: &mut ValueArena,
+) -> Result<ValueHandle, ruby_marshal::IntoValueError> {
+    Ok(arena.create_string(s.into()).into())
 }
 
 fn main() {
@@ -40,6 +68,7 @@ fn main() {
     let object: MyObject = ctx.from_value(arena.root()).unwrap();
     dbg!(&object.field1);
     dbg!(&object.field2);
+    dbg!(&object.field3);
 
     let encoded = object.into_value(&mut arena).unwrap();
     let ctx = ruby_marshal::FromValueContext::new(&arena);
@@ -47,4 +76,5 @@ fn main() {
 
     dbg!(&decoded.field1);
     dbg!(&decoded.field2);
+    dbg!(&decoded.field3);
 }

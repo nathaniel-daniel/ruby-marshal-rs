@@ -52,14 +52,13 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     return error.into();
                 }
             };
-        let name_attribute = field_attributes;
 
         let name = field
             .ident
             .as_ref()
             .expect("named field structs should have named fields");
 
-        let name_str = match name_attribute {
+        let name_str = match field_attributes.name {
             Some(name) => name,
             None => LitByteStr::new(format!("@{name}").as_bytes(), name.span()),
         };
@@ -67,6 +66,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             name,
             name_str,
             ty: &field.ty,
+            from_value: field_attributes.from_value,
         });
     }
 
@@ -82,9 +82,34 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let field_name = &field.name_str;
         let ty = &field.ty;
         let ty_span = ty.span();
-        
-        let get_value = quote_spanned! {ty_span=>
-            let value = ctx.from_value(value)?;
+
+        let get_value = match field.from_value.as_ref() {
+            Some(from_value) => {
+                quote_spanned! {from_value.span()=>
+                    let value = {
+                        struct Wrapper(#ty);
+
+                        impl<'a> ::ruby_marshal::FromValue<'a> for Wrapper {
+                            fn from_value(
+                                ctx: &::ruby_marshal::FromValueContext,
+                                value: &'a::ruby_marshal::Value
+                            ) -> Result<Self, ::ruby_marshal::FromValueError> {
+                                let value = #from_value(ctx, value)?;
+
+                                Ok(Self(value))
+                            }
+                        }
+
+                        let value: Wrapper = ctx.from_value(value)?;
+                        value.0
+                    };
+                }
+            }
+            None => {
+                quote_spanned! {ty_span=>
+                    let value = ctx.from_value(value)?;
+                }
+            }
         };
 
         quote! {
@@ -168,4 +193,5 @@ struct FromValueField<'a> {
     name: &'a Ident,
     name_str: LitByteStr,
     ty: &'a Type,
+    from_value: Option<syn::Path>,
 }
