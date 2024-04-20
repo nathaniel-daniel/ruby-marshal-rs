@@ -8,6 +8,7 @@ use syn::spanned::Spanned;
 use syn::DeriveInput;
 use syn::Ident;
 use syn::LitByteStr;
+use syn::Type;
 
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -61,7 +62,11 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             Some(name) => name,
             None => LitByteStr::new(format!("@{name}").as_bytes(), name.span()),
         };
-        fields.push(IntoValueField { name, name_str });
+        fields.push(IntoValueField {
+            name,
+            name_str,
+            ty: &field.ty,
+        });
     }
 
     let create_field_keys = fields.iter().enumerate().map(|(i, field)| {
@@ -75,8 +80,14 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let create_field_values = fields.iter().enumerate().map(|(i, field)| {
         let ident = format_ident!("field_{i}_value");
         let field_name = &field.name;
-        quote! {
-            let #ident = self.#field_name.into_value(arena)?;
+        let ty = &field.ty;
+        let ty_span = ty.span();
+        
+        let cast_type = quote_spanned! {ty_span=>
+            <#ty as ::ruby_marshal::IntoValue>
+        };
+        quote!{
+            let #ident = #cast_type::into_value(self.#field_name, arena)?;
         }
     });
 
@@ -92,7 +103,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input_name = &input.ident;
     let tokens = quote! {
         impl ::ruby_marshal::IntoValue for #input_name {
-            fn into_value(self, arena: &mut ::ruby_marshal::ValueArena) -> Result<::ruby_marshal::ValueHandle, ::ruby_marshal::IntoValueError> {
+            fn into_value(
+                self,
+                arena: &mut ::ruby_marshal::ValueArena
+            ) -> Result<::ruby_marshal::ValueHandle, ::ruby_marshal::IntoValueError> {
                 let object_name = arena.create_symbol(#object_name.into());
 
                 #(#create_field_keys)*
@@ -116,4 +130,5 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 struct IntoValueField<'a> {
     name: &'a Ident,
     name_str: LitByteStr,
+    ty: &'a Type,
 }

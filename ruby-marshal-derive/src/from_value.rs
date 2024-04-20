@@ -8,6 +8,7 @@ use syn::spanned::Spanned;
 use syn::DeriveInput;
 use syn::Ident;
 use syn::LitByteStr;
+use syn::Type;
 
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -62,11 +63,16 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             Some(name) => name,
             None => LitByteStr::new(format!("@{name}").as_bytes(), name.span()),
         };
-        fields.push(FromValueField { name, name_str });
+        fields.push(FromValueField {
+            name,
+            name_str,
+            ty: &field.ty,
+        });
     }
 
     let option_fields = fields.iter().enumerate().map(|(i, _field)| {
         let ident = format_ident!("option_field_{i}");
+
         quote! {
             let mut #ident = None;
         }
@@ -74,12 +80,25 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let match_arms = fields.iter().enumerate().map(|(i, field)| {
         let ident = format_ident!("option_field_{i}");
         let field_name = &field.name_str;
+        let ty = &field.ty;
+        let ty_span = ty.span();
+        
+        let get_value = quote_spanned! {ty_span=>
+            let value = ctx.from_value(value)?;
+        };
+
         quote! {
             #field_name => {
                 if #ident.is_some() {
-                    return Err(::ruby_marshal::FromValueError::DuplicateInstanceVariable { name: key.into() });
+                    return Err(
+                        ::ruby_marshal::FromValueError::DuplicateInstanceVariable {
+                            name: key.into()
+                        }
+                    );
                 }
-                #ident = Some(ctx.from_value(value)?);
+
+                #get_value
+                #ident = Some(value);
             }
         }
     });
@@ -104,7 +123,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input_name = &input.ident;
     let tokens = quote! {
         impl<'a> ::ruby_marshal::FromValue<'a> for #input_name {
-            fn from_value(ctx: &::ruby_marshal::FromValueContext, value: &'a::ruby_marshal::Value) -> Result<Self, ::ruby_marshal::FromValueError> {
+            fn from_value(
+                ctx: &::ruby_marshal::FromValueContext,
+                value: &'a::ruby_marshal::Value
+            ) -> Result<Self, ::ruby_marshal::FromValueError> {
                 let value: &::ruby_marshal::ObjectValue = ::ruby_marshal::FromValue::from_value(ctx, value)?;
                 {
                     let name = value.name();
@@ -145,4 +167,5 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 struct FromValueField<'a> {
     name: &'a Ident,
     name_str: LitByteStr,
+    ty: &'a Type,
 }
