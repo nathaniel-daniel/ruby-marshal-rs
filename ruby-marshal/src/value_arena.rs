@@ -118,7 +118,7 @@ impl ValueArena {
         let handle = ValueHandle::new(index);
         let handle = TypedValueHandle::new_unchecked(handle);
         
-        self.symbols.insert(value, handle);
+        self.symbols.entry(value).or_insert(handle);
 
         handle
     }
