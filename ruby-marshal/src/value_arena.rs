@@ -34,7 +34,11 @@ impl ValueArena {
         let symbols = HashMap::new();
         let root = ValueHandle::new(arena.insert(Value::Nil(NilValue)));
 
-        Self { arena, symbols, root }
+        Self {
+            arena,
+            symbols,
+            root,
+        }
     }
 
     /// Get the root [`ValueHandle`].
@@ -108,16 +112,18 @@ impl ValueArena {
         if let Some(handle) = self.symbols.get(&value) {
             return *handle;
         }
-        
+
         self.create_new_symbol(value)
     }
-    
+
     /// Create a new orphan `Symbol` value and return the handle.
     pub fn create_new_symbol(&mut self, value: Vec<u8>) -> TypedValueHandle<SymbolValue> {
-        let index = self.arena.insert(Value::Symbol(SymbolValue::new(value.clone())));
+        let index = self
+            .arena
+            .insert(Value::Symbol(SymbolValue::new(value.clone())));
         let handle = ValueHandle::new(index);
         let handle = TypedValueHandle::new_unchecked(handle);
-        
+
         self.symbols.entry(value).or_insert(handle);
 
         handle

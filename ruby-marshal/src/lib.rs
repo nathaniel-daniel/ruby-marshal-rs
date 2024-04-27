@@ -186,7 +186,7 @@ mod test {
 
         value_arena.replace_root(duped_array);
         dump(&mut duped_data, &value_arena).expect("failed to dump");
-        
+
         assert!(deduped_data == duped_data);
     }
 }
