@@ -167,4 +167,26 @@ mod test {
             assert!(data == new_data, "{data:?} != {new_data:?}");
         }
     }
+
+    #[test]
+    fn duped_symbol() {
+        let mut value_arena = ValueArena::new();
+
+        let symbol_1 = value_arena.create_symbol("symbol".into()).into();
+        let symbol_2 = value_arena.create_symbol("symbol".into()).into();
+
+        let deduped_array = value_arena.create_array(vec![symbol_1, symbol_1]);
+        let duped_array = value_arena.create_array(vec![symbol_1, symbol_2]);
+
+        let mut deduped_data = Vec::new();
+        let mut duped_data = Vec::new();
+
+        value_arena.replace_root(deduped_array);
+        dump(&mut deduped_data, &value_arena).expect("failed to dump");
+
+        value_arena.replace_root(duped_array);
+        dump(&mut duped_data, &value_arena).expect("failed to dump");
+
+        assert!(deduped_data == duped_data);
+    }
 }
