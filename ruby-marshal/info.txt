@@ -1,0 +1,3 @@
+Marshal.load(File.binread('filename.bin'))
+
+File.open('filename.bin', 'wb') {|f| f.write(Marshal.dump(line))}

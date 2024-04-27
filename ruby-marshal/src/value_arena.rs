@@ -15,11 +15,13 @@ pub use self::value::ValueKind;
 pub use self::value_handle::TypedValueHandle;
 pub use self::value_handle::ValueHandle;
 use slotmap::SlotMap;
+use std::collections::HashMap;
 
 /// An arena of Ruby values.
 #[derive(Debug)]
 pub struct ValueArena {
     arena: SlotMap<slotmap::DefaultKey, Value>,
+    symbols: HashMap<Vec<u8>, TypedValueHandle<SymbolValue>>,
     root: ValueHandle,
 }
 
@@ -29,9 +31,10 @@ impl ValueArena {
     /// The root node is nil.
     pub fn new() -> Self {
         let mut arena = SlotMap::new();
+        let symbols = HashMap::new();
         let root = ValueHandle::new(arena.insert(Value::Nil(NilValue)));
 
-        Self { arena, root }
+        Self { arena, symbols, root }
     }
 
     /// Get the root [`ValueHandle`].
@@ -99,11 +102,25 @@ impl ValueArena {
     }
 
     /// Create an orphan `Symbol` value and return the handle.
+    ///
+    /// If a symbol with this name already exists in this arena, it is returned instead of creating a new symbol.
     pub fn create_symbol(&mut self, value: Vec<u8>) -> TypedValueHandle<SymbolValue> {
-        let index = self.arena.insert(Value::Symbol(SymbolValue::new(value)));
+        if let Some(handle) = self.symbols.get(&value) {
+            return *handle;
+        }
+        
+        self.create_new_symbol(value)
+    }
+    
+    /// Create a new orphan `Symbol` value and return the handle.
+    pub fn create_new_symbol(&mut self, value: Vec<u8>) -> TypedValueHandle<SymbolValue> {
+        let index = self.arena.insert(Value::Symbol(SymbolValue::new(value.clone())));
         let handle = ValueHandle::new(index);
+        let handle = TypedValueHandle::new_unchecked(handle);
+        
+        self.symbols.insert(value, handle);
 
-        TypedValueHandle::new_unchecked(handle)
+        handle
     }
 
     /// Create an orphan `Array` value and return the handle.
