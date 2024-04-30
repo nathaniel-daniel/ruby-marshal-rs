@@ -13,6 +13,7 @@ use crate::ValueArena;
 use crate::ValueHandle;
 use crate::ValueKind;
 use std::cell::RefCell;
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::hash::Hash;
 
@@ -427,6 +428,62 @@ where
         let value = value.value();
 
         let mut map = HashMap::with_capacity(value.len());
+        for (key_handle, value_handle) in value.iter().copied() {
+            let key = ctx.from_value(key_handle)?;
+            let value = ctx.from_value(value_handle)?;
+
+            let old_value = map.insert(key, value);
+
+            if old_value.is_some() {
+                return Err(FromValueError::DuplicateHashKey { key: key_handle });
+            }
+        }
+
+        Ok(map)
+    }
+}
+
+/// An error that may occur while extracting a BTreeMap from a value.
+#[derive(Debug)]
+pub enum BTreeMapFromValueError {
+    /// The BTreeMap cannot be extracted since it has a default value.
+    HasDefaultValue {
+        /// The default value
+        value: ValueHandle,
+    },
+}
+
+impl std::fmt::Display for BTreeMapFromValueError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::HasDefaultValue { .. } => {
+                write!(f, "HashValue has a default value")
+            }
+        }
+    }
+}
+
+impl std::error::Error for BTreeMapFromValueError {}
+
+impl<'a, K, V> FromValue<'a> for BTreeMap<K, V>
+where
+    K: FromValue<'a> + Eq + Ord,
+    V: FromValue<'a>,
+{
+    fn from_value(ctx: &FromValueContext<'a>, value: &'a Value) -> Result<Self, FromValueError> {
+        let value: &HashValue = FromValue::from_value(ctx, value)?;
+
+        if let Some(default_value) = value.default_value() {
+            return Err(FromValueError::new_other(
+                BTreeMapFromValueError::HasDefaultValue {
+                    value: default_value,
+                },
+            ));
+        }
+
+        let value = value.value();
+
+        let mut map = BTreeMap::new();
         for (key_handle, value_handle) in value.iter().copied() {
             let key = ctx.from_value(key_handle)?;
             let value = ctx.from_value(value_handle)?;
