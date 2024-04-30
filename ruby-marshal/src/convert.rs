@@ -1,11 +1,13 @@
 mod from_value;
 
+pub use self::from_value::BTreeMapFromValueError;
 pub use self::from_value::FromValue;
 pub use self::from_value::FromValueContext;
 pub use self::from_value::FromValueError;
 pub use self::from_value::HashMapFromValueError;
 use crate::ValueArena;
 use crate::ValueHandle;
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 
 /// A utility to display a byte sequence as a string if it is UTF8 or a slice otherwise.
@@ -92,6 +94,25 @@ where
 }
 
 impl<K, V> IntoValue for HashMap<K, V>
+where
+    K: IntoValue,
+    V: IntoValue,
+{
+    fn into_value(self, arena: &mut ValueArena) -> Result<ValueHandle, IntoValueError> {
+        let mut items = Vec::new();
+
+        for (key, value) in self.into_iter() {
+            let key_handle = key.into_value(arena)?;
+            let value_handle = value.into_value(arena)?;
+
+            items.push((key_handle, value_handle));
+        }
+
+        Ok(arena.create_hash(items, None).into())
+    }
+}
+
+impl<K, V> IntoValue for BTreeMap<K, V>
 where
     K: IntoValue,
     V: IntoValue,
@@ -220,6 +241,10 @@ mod test {
             .from_value(hash_handle)
             .expect("failed exec <HashMap<i32, i32>>::from_value");
 
+        let _btree_map_value: BTreeMap<i32, i32> = ctx
+            .from_value(hash_handle)
+            .expect("failed exec <BTreeMap<i32, i32>>::from_value");
+
         true.into_value(&mut arena)
             .expect("failed to exec bool::into_value");
 
@@ -235,12 +260,16 @@ mod test {
             .into_value(&mut arena)
             .expect("failed to exec HashMap::<i32, i32>::into_value");
 
+        BTreeMap::<i32, i32>::new()
+            .into_value(&mut arena)
+            .expect("failed to exec BTreeMap::<i32, i32>::into_value");
+
         Some(2_i32)
             .into_value(&mut arena)
-            .expect("failed to exec Option::<i32, i32>::Some::into_value");
+            .expect("failed to exec Option::<i32>::Some::into_value");
 
         None::<i32>
             .into_value(&mut arena)
-            .expect("failed to exec Option::<i32, i32>::Some::into_value");
+            .expect("failed to exec Option::<i32>::None::into_value");
     }
 }
