@@ -5,7 +5,7 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-anyhow = "1.0.82"
+anyhow = "1.0.86"
 argh = "0.1.12"
 base64 = "0.22.1"
 nd-util = { git = "https://github.com/nathaniel-daniel/nd-util-rs", version = "0.0.0" }
