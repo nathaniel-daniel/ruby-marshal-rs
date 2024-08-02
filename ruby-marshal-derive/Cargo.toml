@@ -13,5 +13,5 @@ quote = "1"
 syn = { version = "2", features = [ "extra-traits" ] }
 
 [dev-dependencies]
-trybuild = { version = "1.0.96", features = ["diff"] }
+trybuild = { version = "1.0.99", features = ["diff"] }
 ruby-marshal = { path = "../ruby-marshal" }
