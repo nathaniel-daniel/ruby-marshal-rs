@@ -94,7 +94,7 @@ checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
 [[package]]
 name = "nd-util"
 version = "0.0.0"
-source = "git+https://github.com/nathaniel-daniel/nd-util-rs#c1837d6e16b9cc3126bbd62003940944933f6022"
+source = "git+https://github.com/nathaniel-daniel/nd-util-rs#0dc893c9bc417483a31e702bd678003a4f70d64a"
 
 [[package]]
 name = "proc-macro2"
