@@ -1,0 +1,1 @@
+searchState.loadedDescShard("ruby_marshal_derive", 0, "")
