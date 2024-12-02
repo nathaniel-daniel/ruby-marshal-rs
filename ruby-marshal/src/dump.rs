@@ -44,7 +44,7 @@ impl<'a, W> Dumper<'a, W> {
     }
 }
 
-impl<'a, W> Dumper<'a, W>
+impl<W> Dumper<'_, W>
 where
     W: Write,
 {

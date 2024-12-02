@@ -14,7 +14,7 @@ use std::collections::HashMap;
 #[derive(Debug)]
 pub struct DisplayByteString<'a>(pub &'a [u8]);
 
-impl<'a> std::fmt::Display for DisplayByteString<'a> {
+impl std::fmt::Display for DisplayByteString<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let string = self.0;
         match std::str::from_utf8(string) {

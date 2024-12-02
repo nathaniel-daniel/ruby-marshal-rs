@@ -240,7 +240,7 @@ impl<'a, 'b> FromValueGuard<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Drop for FromValueGuard<'a, 'b> {
+impl Drop for FromValueGuard<'_, '_> {
     fn drop(&mut self) {
         self.ctx.end_handle(self.handle);
     }
